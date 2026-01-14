@@ -1,0 +1,8 @@
+0.无效gdt
+1.内核代码段
+2.内核数据段
+3.无效gdt
+4.任务状态段tss（Task State Segment）
+5.ldt段
+
+具体搜索gdt
