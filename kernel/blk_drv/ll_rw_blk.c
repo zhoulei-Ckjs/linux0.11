@@ -72,7 +72,7 @@ static void add_request(struct blk_dev_struct * dev, struct request * req)
 	if (!(tmp = dev->current_request)) {	///< 如果没有请求，设置请求为当前请求
 		dev->current_request = req;
 		sti();
-		(dev->request_fn)();				///< 
+		(dev->request_fn)();				///< 进行硬盘初始化（重置硬盘控制器，重设硬盘参数）。
 		return;
 	}
 	for ( ; tmp->next ; tmp=tmp->next)

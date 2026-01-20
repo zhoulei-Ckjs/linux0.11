@@ -37,7 +37,7 @@ inb_p(0x71); \
 static void recal_intr(void);
 
 static int recalibrate = 1;
-static int reset = 1;
+static int reset = 1;           ///< 硬盘重置标识
 
 /*
  *  This struct defines the HD's and their types.
@@ -134,7 +134,7 @@ int sys_setup(void * BIOS)
         hd[i*5].nr_sects = 0;
     }
     for (drive=0 ; drive<NR_HD ; drive++) {
-        if (!(bh = bread(0x300 + drive*5,0))) {									///< 0x300是第一块硬盘/dev/hd0
+        if (!(bh = bread(0x300 + drive*5,0))) { ///< 0x300是第一块硬盘/dev/hd0，硬盘分区表在MBR内部，需要读取MBR来获取硬盘分区表（分区表位于MBR扇区最后66字节（64+0x55aa））。
             printk("Unable to read partition table of drive %d\n\r",
                 drive);
             panic("");
@@ -226,12 +226,12 @@ static void reset_controller(void)
     if ((i = inb(HD_ERROR)) != 1)
         printk("HD-controller reset failed: %02x\n\r",i);
 }
-
+/* 复位硬盘 */
 static void reset_hd(int nr)
 {
-    reset_controller();
+    reset_controller();                 ///< 复位硬盘控制器
     hd_out(nr,hd_info[nr].sect,hd_info[nr].sect,hd_info[nr].head-1,
-        hd_info[nr].cyl,WIN_SPECIFY,&recal_intr);
+        hd_info[nr].cyl,WIN_SPECIFY,&recal_intr);       ///< 设置完硬盘参数后会产生IRQ14中断，对应中断向量0x2E。
 }
 
 void unexpected_hd_interrupt(void)
@@ -316,7 +316,7 @@ void do_hd_request(void)
     if (reset) {
         reset = 0;
         recalibrate = 1;
-        reset_hd(CURRENT_DEV);
+        reset_hd(CURRENT_DEV);      ///< CURRENT_DEV = 0。
         return;
     }
     if (recalibrate) {
@@ -339,11 +339,11 @@ void do_hd_request(void)
     } else
         panic("unknown hd-command");
 }
-
+/* 设置硬盘中断函数，清除对主硬盘中断的屏蔽 */
 void hd_init(void)
 {
     blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;		///< MAJOR_NR = 3 , request_fn = do_hd_request
-    set_intr_gate(0x2E, &hd_interrupt);
-    outb_p(inb_p(0x21)&0xfb,0x21);
-    outb(inb_p(0xA1)&0xbf,0xA1);
+    set_intr_gate(0x2E, &hd_interrupt);                 ///< 设置硬盘中断处理函数。
+    outb_p(inb_p(0x21)&0xfb,0x21);                      ///< 0x21:8259A控制寄存器的数据端口，0xfb=0b1111_1011，清除IRQ2的屏蔽位（级联到从片）。
+    outb(inb_p(0xA1)&0xbf,0xA1);                        ///< 0xA1为从8259A芯片的数据端口，0xf=0b1011_1111，清除从片的IRQ14。
 }
