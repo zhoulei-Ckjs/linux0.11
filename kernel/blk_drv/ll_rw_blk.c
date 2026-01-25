@@ -41,11 +41,11 @@ struct blk_dev_struct blk_dev[NR_BLK_DEV] = {
 /* 锁定 buffer，多进程只有一个能锁定成功，其他进程会等待在 b_wait 上。*/
 static inline void lock_buffer(struct buffer_head * bh)
 {
-    cli();
-    while (bh->b_lock)
-        sleep_on(&bh->b_wait);
-    bh->b_lock=1;
-    sti();
+    cli();                      ///< 关中断（清除 eflags 寄存器中的 IF 位，防止在检查锁定状态和设置锁定状态时被打断）
+    while (bh->b_lock)          ///< 检查当前缓冲区是否已被锁定
+        sleep_on(&bh->b_wait);  ///< 如果已被锁定，等待在 b_wait 上。
+    bh->b_lock=1;               ///< 设置锁定标志。
+    sti();                      ///< 开中断
 }
 
 static inline void unlock_buffer(struct buffer_head * bh)
@@ -84,7 +84,7 @@ static void add_request(struct blk_dev_struct * dev, struct request * req)
     tmp->next=req;
     sti();
 }
-/* major 为硬盘主设备号（0x0300 的主设备号为 3） */
+/* 将请求加入到 blk_dev 的请求队列中，major 为硬盘主设备号（0x0300 的主设备号为 3） */
 static void make_request(int major,int rw, struct buffer_head * bh)        ///< major = 0b0011，rw = READ，bh 为空闲链表头
 {
     struct request * req;
@@ -123,25 +123,25 @@ repeat:
 /* if none found, sleep on new requests: check for rw_ahead */
     if (req < request) {                    ///< 当前请求已经满了（超过 request 数组的大小了）
         if (rw_ahead) {                        ///< 是否是预读请求
-            unlock_buffer(bh);                ///< 队列满时可直接丢弃（避免阻塞主请求），由上层应用重试。
+            unlock_buffer(bh);                  ///< 队列满时可直接丢弃（避免阻塞主请求），由上层应用重试。
             return;
         }
-        sleep_on(&wait_for_request);        ///< 使当前进程进入睡眠状态，等待 wait_for_request 等待队列被唤醒。
+        sleep_on(&wait_for_request);            ///< 如果 request 都用完了，使当前进程进入睡眠状态，等待 wait_for_request 等待队列被唤醒。
         goto repeat;
     }
 /* fill up the request-info, and add it to the queue */
     req->dev = bh->b_dev;
     req->cmd = rw;
     req->errors=0;
-    req->sector = bh->b_blocknr<<1;            ///< 1 个内核块 = 2 个磁盘扇区
+    req->sector = bh->b_blocknr<<1;             ///< 1 个内核块 = 2 个磁盘扇区
     req->nr_sectors = 2;
     req->buffer = bh->b_data;                ///< 内核块的位置
     req->waiting = NULL;
     req->bh = bh;
     req->next = NULL;
-    add_request(major + blk_dev, req);        ///< major = 0b0011
+    add_request(major + blk_dev, req);          ///< 将当前读写请求加入队列，major = 0b0011
 }
-
+/* 将请求加入到队列中 */
 void ll_rw_block(int rw, struct buffer_head * bh)
 {
     unsigned int major;
@@ -151,7 +151,7 @@ void ll_rw_block(int rw, struct buffer_head * bh)
         printk("Trying to read nonexistent block-device\n\r");
         return;
     }
-    make_request(major, rw, bh);                                    ///< major = 0b0011，rw = READ，bh 为空闲链表头
+    make_request(major, rw, bh);                                    ///< 将请求加入 blk_dev 请求队列中。major = 0b0011，rw = READ，bh 为空闲链表头
 }
 
 void blk_dev_init(void)
