@@ -173,11 +173,11 @@ struct {long a,b;} __tmp; \
 __asm__("cmpl %%ecx,_current\n\t" \
 	"je 1f\n\t" \
 	"movw %%dx,%1\n\t" \
-	"xchgl %%ecx,_current\n\t" \
-	"ljmp %0\n\t" \
-	"cmpl %%ecx,_last_task_used_math\n\t" \
-	"jne 1f\n\t" \
-	"clts\n" \
+	"xchgl %%ecx,_current\n\t"            /* 将当前正在泡的进程（自己）放到ecx中，在ljmp时会保存ecx值 */ \
+	"ljmp %0\n\t"                         /* 跳转到信进程。在跳转之前，保存tss。_current保存的是将要切换的进程 */ \
+	"cmpl %%ecx,_last_task_used_math\n\t" /* 判断当前进程是否是最后一个使用浮点寄存器的进程 */ \
+	"jne 1f\n\t"                          /* 如果不相等，跳转到1f，（跳过清除标记位的过程，在当前进程使用FPU时会触发异常）*/ \
+	"clts\n"                              /* 如果相等，则清除标记位 */ \
 	"1:" \
 	::"m" (*&__tmp.a),"m" (*&__tmp.b), \
 	"d" (_TSS(n)),"c" ((long) task[n])); \

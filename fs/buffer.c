@@ -272,7 +272,7 @@ struct buffer_head * bread(int dev,int block)               ///< dev = 0x300, bl
         panic("bread: getblk returned NULL\n");
     if (bh->b_uptodate)                                     ///< 内存块最新（与硬盘内容一致），则返回内存块。如果不一致的话就需要等待读取硬盘块到内存块中。
         return bh;
-    ll_rw_block(READ, bh);
+    ll_rw_block(READ, bh);                                  ///< 创建读取硬盘块请求，这里是读取MBR。 
     wait_on_buffer(bh);
     if (bh->b_uptodate)
         return bh;

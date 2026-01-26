@@ -220,7 +220,7 @@ static void reset_controller(void)
 
     outb(4, HD_CMD);                    ///< 软件复位
     for(i = 0; i < 100; i++) nop();     ///< 等待
-    outb(hd_info[0].ctl & 0x0f ,HD_CMD);///< 设置控制寄存器（启用中断模式）
+    outb(hd_info[0].ctl & 0x0f ,HD_CMD);///< 设置IDE控制器的控制寄存器（启用中断模式）
     if (drive_busy())
         printk("HD-controller still busy\n\r");
     if ((i = inb(HD_ERROR)) != 1)

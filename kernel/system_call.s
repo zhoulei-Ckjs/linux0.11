@@ -217,7 +217,7 @@ _sys_fork:
 	call _copy_process
 	addl $20,%esp
 1:	ret
-
+; 硬盘中断处理程序
 _hd_interrupt:
 	pushl %eax
 	pushl %ecx
@@ -225,22 +225,22 @@ _hd_interrupt:
 	push %ds
 	push %es
 	push %fs
-	movl $0x10,%eax
-	mov %ax,%ds
-	mov %ax,%es
-	movl $0x17,%eax
-	mov %ax,%fs
+	movl $0x10,%eax    ; 0b0001_0000 为内核数据段选择子，最后三位为属性位。
+	mov %ax,%ds        ; 内核数据段
+	mov %ax,%es        ; 内核数据段
+	movl $0x17,%eax    ; 0b0001_0111 为用户数据段选择子，最后三位为属性位。
+	mov %ax,%fs        ; fs 为用户数据段选择子
 	movb $0x20,%al
-	outb %al,$0xA0		# EOI to interrupt controller #1
-	jmp 1f			# give port chance to breathe
+	outb %al,$0xA0     ; 发送 EOI 给 8259A 从片命令端口，通知 8259A 从片中断处理结束。
+	jmp 1f             ; 延迟
 1:	jmp 1f
-1:	xorl %edx,%edx
-	xchgl _do_hd,%edx
-	testl %edx,%edx
-	jne 1f
+1:	xorl %edx,%edx     ; edx = 0
+	xchgl _do_hd,%edx  ; do_hd = 0, edx = do_hd
+	testl %edx,%edx    ; 检测 edx 是否为 0
+	jne 1f             ; 如果 edx != 0 则跳转
 	movl $_unexpected_hd_interrupt,%edx
-1:	outb %al,$0x20
-	call *%edx		# "interesting" way of handling intr.
+1:	outb %al,$0x20     ; 发送 EOI 给 8259A 主片命令端口，通知 8259A 主片中断处理结束。（芯片级联，需通知两片都处理完中断，按照先从后主的顺序）
+	call *%edx         ; AT&T 汇编语法中的间接函数调用指令。
 	pop %fs
 	pop %es
 	pop %ds
