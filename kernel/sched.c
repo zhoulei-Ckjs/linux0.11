@@ -57,7 +57,7 @@ union task_union {
 
 static union task_union init_task = {INIT_TASK,};
 
-long volatile jiffies=0;
+long volatile jiffies = 0;  ///< 时钟滴答数，用以表示当前时间。
 long startup_time=0;
 struct task_struct *current = &(init_task.task);
 struct task_struct *last_task_used_math = NULL;
@@ -90,12 +90,12 @@ void math_state_restore()
         current->used_math=1;
     }
 }
-
 /*
- *  'schedule()' is the scheduler function. This is GOOD CODE! There
- * probably won't be any reason to change this, as it should work well
- * in all circumstances (ie gives IO-bound processes good response etc).
- * The one thing you might take a look at is the signal-handler code here.
+ *
+ * 进行进程切换。
+ * 检测闹钟和其他信号。
+ * 选择时间片最多的进程进行切换（都没有时间片则依照优先级进行重新分配时间片）
+ * 
  *
  *   NOTE!!  Task 0 is the 'idle' task, which gets called when no other
  * tasks can run. It can not be killed, and it cannot sleep. The 'state'
@@ -110,13 +110,13 @@ void schedule(void)
 
     for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
         if (*p) {
-            if ((*p)->alarm && (*p)->alarm < jiffies) {
-                    (*p)->signal |= (1<<(SIGALRM-1));
-                    (*p)->alarm = 0;
-                }
-            if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) &&
+            if ((*p)->alarm && (*p)->alarm < jiffies) { ///< 如果有闹钟 && 闹钟到时间了。
+                (*p)->signal |= (1<<(SIGALRM-1));       ///< 加入时钟中断
+                (*p)->alarm = 0;
+            }
+            if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) &&   /* 进程可被中断 && 有未被屏蔽信号 */
             (*p)->state==TASK_INTERRUPTIBLE)
-                (*p)->state=TASK_RUNNING;
+                (*p)->state=TASK_RUNNING;               /* 让它去争抢时间片 */
         }
 
 /* this is the scheduler proper: */
@@ -127,18 +127,18 @@ void schedule(void)
         i = NR_TASKS;
         p = &task[NR_TASKS];
         while (--i) {
-            if (!*--p)
+            if (!*--p)      /* 判断任务是否存在，不存在则继续 */
                 continue;
-            if ((*p)->state == TASK_RUNNING && (*p)->counter > c)
+            if ((*p)->state == TASK_RUNNING && (*p)->counter > c)   /* 寻找时间片最多的任务 */
                 c = (*p)->counter, next = i;
         }
         if (c) break;
-        for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
+        for(p = &LAST_TASK ; p > &FIRST_TASK ; --p) /* 如果时间片都没有了，那么根据优先级重新分配时间片 */
             if (*p)
                 (*p)->counter = ((*p)->counter >> 1) +
                         (*p)->priority;
     }
-    switch_to(next);
+    switch_to(next);    ///< 跳转到进程 next。
 }
 
 int sys_pause(void)
@@ -147,20 +147,20 @@ int sys_pause(void)
     schedule();
     return 0;
 }
-
+/* 睡眠到这个信号上，将 CPU 交给其他进程，自己变成 TASK_UNINTERRUPTIBLE */
 void sleep_on(struct task_struct **p)
 {
     struct task_struct *tmp;
 
-    if (!p)
+    if (!p)                                 ///< 队列不存在，直接返回
         return;
     if (current == &(init_task.task))
         panic("task[0] trying to sleep");
-    tmp = *p;                               ///< tmp存储了旧的*p
-    *p = current;							///< 将当前进程加入到等待队列p，*p存储了自己。
+    tmp = *p;                               ///< tmp 存储了旧的 *p
+    *p = current;							///< 将当前进程加入到等待队列 p，*p 存储了自己。
     current->state = TASK_UNINTERRUPTIBLE;	///< 当前进程不可中断的状态，将自己阻塞，让其他进程去争抢时间片。
     schedule();
-    if (tmp)
+    if (tmp)                                ///< 时间片轮转到此进程时，继续在此处执行。
         tmp->state = 0;                     ///< 激活自己的上一个等待进程，让上一个进程去争抢轮询时间片。
 }
 
@@ -184,12 +184,12 @@ repeat:	current->state = TASK_INTERRUPTIBLE;
     if (tmp)
         tmp->state=0;
 }
-
+/* 唤醒等待进程，让进程可以争抢时间片 */
 void wake_up(struct task_struct **p)
 {
     if (p && *p) {
-        (**p).state=0;
-        *p=NULL;
+        (**p).state=0;  ///< 更新当前进程的状态，0 为 TASK_RUNNING，可以争抢时间片了
+        *p=NULL;        ///< 将队列头置空，因为队列头变为 TASK_RUNNING 后会激活队列头的下一个等待进程。下一个等待进程进入调度后也是如此，因此就激活了所有的等待进程，详见 sleep_on 函数。
     }
 }
 

@@ -4,8 +4,8 @@
 #define NR_TASKS 64
 #define HZ 100
 
-#define FIRST_TASK task[0]
-#define LAST_TASK task[NR_TASKS-1]
+#define FIRST_TASK task[0]			/* 第一个进程 */
+#define LAST_TASK task[NR_TASKS-1]	/* 进程 */
 
 #include <linux/head.h>
 #include <linux/fs.h>
@@ -16,9 +16,9 @@
 #error "Currently the close-on-exec-flags are in one word, max 32 files/proc"
 #endif
 
-#define TASK_RUNNING		0
-#define TASK_INTERRUPTIBLE	1
-#define TASK_UNINTERRUPTIBLE	2
+#define TASK_RUNNING		0		/* 可运行或等待被调度 */
+#define TASK_INTERRUPTIBLE	1		/* 可被中断 */
+#define TASK_UNINTERRUPTIBLE	2	/* 不可被中断 */
 #define TASK_ZOMBIE		3
 #define TASK_STOPPED		4
 
@@ -78,7 +78,7 @@ struct tss_struct {
 struct task_struct {
 /* these are hardcoded - don't touch */
 	long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
-	long counter;
+	long counter;		/* 当前进程剩余时间片 */
 	long priority;
 	long signal;
 	struct sigaction sigaction[32];
@@ -89,7 +89,7 @@ struct task_struct {
 	long pid,father,pgrp,session,leader;
 	unsigned short uid,euid,suid;
 	unsigned short gid,egid,sgid;
-	long alarm;
+	long alarm;	///< 设置闹钟
 	long utime,stime,cutime,cstime,start_time;
 	unsigned short used_math;
 /* file system info */
@@ -150,9 +150,9 @@ extern void wake_up(struct task_struct ** p);
  * Entry into gdt where to find first TSS. 0-nul, 1-cs, 2-ds, 3-syscall
  * 4-TSS0, 5-LDT0, 6-TSS1 etc ...
  */
-#define FIRST_TSS_ENTRY 4
+#define FIRST_TSS_ENTRY 4	/* 第一个 tss 的位置在 gdt 表中下标 */
 #define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
-#define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
+#define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))	/* 计算进程 n 的 tss 选择子。为什么左移 4 位，选择子最后 3 位为属性位，又多左移 1 位是因为每个进程拥有 2 个 gdt 表项 */
 #define _LDT(n) ((((unsigned long) n)<<4)+(FIRST_LDT_ENTRY<<3))
 #define ltr(n) __asm__("ltr %%ax"::"a" (_TSS(n)))
 #define lldt(n) __asm__("lldt %%ax"::"a" (_LDT(n)))
@@ -163,21 +163,21 @@ __asm__("str %%ax\n\t" \
 	:"=a" (n) \
 	:"a" (0),"i" (FIRST_TSS_ENTRY<<3))
 /*
- *	switch_to(n) should switch tasks to task nr n, first
- * checking that n isn't the current task, in which case it does nothing.
- * This also clears the TS-flag if the task we switched to has used
- * tha math co-processor latest.
+ *	switch_to(n) 跳转到进程 n。
+ * 先检查进程 n 是否是当前进程, 如果是的话就什么都不做
+ * 如果不是，则保存旧进程的 tss，然后跳转到新进程并清除 FPU 位（浮点寄存器位）
+ * 
  */
 #define switch_to(n) {\
 struct {long a,b;} __tmp; \
-__asm__("cmpl %%ecx,_current\n\t" \
-	"je 1f\n\t" \
-	"movw %%dx,%1\n\t" \
-	"xchgl %%ecx,_current\n\t"            /* 将当前正在泡的进程（自己）放到ecx中，在ljmp时会保存ecx值 */ \
-	"ljmp %0\n\t"                         /* 跳转到信进程。在跳转之前，保存tss。_current保存的是将要切换的进程 */ \
-	"cmpl %%ecx,_last_task_used_math\n\t" /* 判断当前进程是否是最后一个使用浮点寄存器的进程 */ \
-	"jne 1f\n\t"                          /* 如果不相等，跳转到1f，（跳过清除标记位的过程，在当前进程使用FPU时会触发异常）*/ \
-	"clts\n"                              /* 如果相等，则清除标记位 */ \
+__asm__("cmpl %%ecx,_current\n\t"			/* 将当前进程与要跳转的进程进行比较 */ \
+	"je 1f\n\t"								/* 要是要跳转的进程就是当前进程，就跳转到 1f */ \
+	"movw %%dx,%1\n\t"						/* 将进程 n 的 tss 位置保存到 __tmp.b 里面 */ \
+	"xchgl %%ecx,_current\n\t"				/* 将当前正在跑的进程（自己）放到 ecx 中，在 ljmp 时会保存 ecx 值 */ \
+	"ljmp %0\n\t"							/* 跳转到新进程，跳转到 segment:offset，其中 segment 为选择子（进入保护模式后都变为选择子）。在跳转之前，保存 tss 到旧进程的 gdt[old_task_tss_index] 表项中。_current 保存的是将要切换的进程 */ \
+	"cmpl %%ecx,_last_task_used_math\n\t"	/* 判断当前进程是否是最后一个使用浮点寄存器的进程 */ \
+	"jne 1f\n\t"							/* 如果不相等，跳转到 1f，（跳过清除标记位的过程，在当前进程使用 FPU 时会触发异常）*/ \
+	"clts\n"								/* 如果相等，则清除标记位 */ \
 	"1:" \
 	::"m" (*&__tmp.a),"m" (*&__tmp.b), \
 	"d" (_TSS(n)),"c" ((long) task[n])); \

@@ -13,19 +13,19 @@
  * long pauses in reading when heavy writing/syncing is going on)
  */
 #define NR_REQUEST	32
-
 /*
+ *
  * Ok, this is an expanded form so that we can use the same
  * request for paging requests when that is implemented. In
  * paging, 'bh' is NULL, and 'waiting' is used to wait for
  * read/write completion.
  */
 struct request {
-	int dev;		/* 设备号，-1表示无设备 */
-	int cmd;		/* READ or WRITE */
+	int dev;						///< 设备号，-1表示无设备
+	int cmd;						///< READ 或 WRITE
 	int errors;
-	unsigned long sector;
-	unsigned long nr_sectors;
+	unsigned long sector;			///< 起始扇区号
+	unsigned long nr_sectors;		///< 要读写的扇区数
 	char * buffer;
 	struct task_struct * waiting;	///< 当前发起 IO 请求的进程
 	struct buffer_head * bh;		///< 内存块头
@@ -77,7 +77,7 @@ extern struct task_struct * wait_for_request;
 
 #elif (MAJOR_NR == 3)
 	/* harddisk */
-	#define DEVICE_NAME "harddisk"
+	#define DEVICE_NAME "harddisk"	                  ///< 硬盘名
 	#define DEVICE_INTR do_hd
 	#define DEVICE_REQUEST do_hd_request
 	#define DEVICE_NR(device) (MINOR(device)/5)
@@ -90,31 +90,31 @@ extern struct task_struct * wait_for_request;
 
 #endif
 
-#define CURRENT (blk_dev[MAJOR_NR].current_request)
-#define CURRENT_DEV DEVICE_NR(CURRENT->dev)
+#define CURRENT (blk_dev[MAJOR_NR].current_request)		/* 当前请求 */
+#define CURRENT_DEV DEVICE_NR(CURRENT->dev)				/* 当前请求的设备 */
 
 #ifdef DEVICE_INTR
 void (*DEVICE_INTR)(void) = NULL;
 #endif
 static void (DEVICE_REQUEST)(void);
-
+/* 去除锁标志，并唤醒等待在此内存的进程 */
 extern inline void unlock_buffer(struct buffer_head * bh)
 {
 	if (!bh->b_lock)
 		printk(DEVICE_NAME ": free buffer being unlocked\n");
 	bh->b_lock=0;
-	wake_up(&bh->b_wait);
+	wake_up(&bh->b_wait);                       ///< 唤醒等待在此内存块的进程
 }
-
+/* 更新磁盘处理结果，删除磁盘 IO 队列头的请求（因为这个就是处理第一个 IO 请求的结果），即内存是否映射了磁盘块，并唤醒等待 buffer 的进程 */
 extern inline void end_request(int uptodate)	///< uptodate = 0
 {
 	DEVICE_OFF(CURRENT->dev);					///< hard disk : do nothing
 	if (CURRENT->bh) {
 		CURRENT->bh->b_uptodate = uptodate;		///< 更新磁盘块是否是最新的
-		unlock_buffer(CURRENT->bh);
+		unlock_buffer(CURRENT->bh);             ///< 唤醒等待此 buffer 的进程，即使没有读取到磁盘也唤醒，问题让用户进程去处理
 	}
 	if (!uptodate) {
-		printk(DEVICE_NAME " I/O error\n\r");
+		printk(DEVICE_NAME " I/O error\n\r");   ///< 打印错误日志
 		printk("dev %04x, block %d\n\r",CURRENT->dev,
 			CURRENT->bh->b_blocknr);
 	}
@@ -123,18 +123,16 @@ extern inline void end_request(int uptodate)	///< uptodate = 0
 	CURRENT->dev = -1;              ///< 将请求的设备置空
 	CURRENT = CURRENT->next;        ///< 切换到下一个请求
 }
-
+/* 对 IO 队列进行初步校验。1.无 IO 请求则 return；2.主设备号检测；3.锁定检测。 */
 #define INIT_REQUEST \
 repeat: \
-	if (!CURRENT) \
+	if (!CURRENT)	/* 如果当前无请求，则返回。 */ \
 		return; \
-	if (MAJOR(CURRENT->dev) != MAJOR_NR) \
+	if (MAJOR(CURRENT->dev) != MAJOR_NR)	/* 检查主设备号 0x300，主设备号为 3。 */ \
 		panic(DEVICE_NAME ": request list destroyed"); \
 	if (CURRENT->bh) { \
-		if (!CURRENT->bh->b_lock) \
+		if (!CURRENT->bh->b_lock)	/* 检查是否被锁定 */ \
 			panic(DEVICE_NAME ": block not locked"); \
 	}
-
 #endif
-
 #endif

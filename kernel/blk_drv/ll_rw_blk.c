@@ -13,14 +13,14 @@
 #include <asm/system.h>
 
 #include "blk.h"
-
 /*
+ * IO 请求数组
  * The request-struct contains all necessary data
  * to load a nr of sectors into memory
  */
-struct request request[NR_REQUEST];                ///< 请求
-
-/* 如果 request 数组被用没了，就让当前进程等待在 wait_for_request 上
+struct request request[NR_REQUEST];                ///< IO请求
+/*
+ * 如果 request 数组被用没了，就让当前进程等待在 wait_for_request 上
  * 
  */
 struct task_struct * wait_for_request = NULL;
@@ -32,8 +32,8 @@ struct task_struct * wait_for_request = NULL;
 struct blk_dev_struct blk_dev[NR_BLK_DEV] = {
     { NULL, NULL },        /* no_dev */
     { NULL, NULL },        /* dev mem */
-    { NULL, NULL },        /* dev fd (floopy disk) */
-    { NULL, NULL },        /* dev hd (hard disk) */
+    { NULL, NULL },        /* 软盘 fd (floopy disk) */
+    { NULL, NULL },        /* 硬盘 hd (hard disk) */
     { NULL, NULL },        /* dev ttyx */
     { NULL, NULL },        /* dev tty */
     { NULL, NULL }        /* dev lp */
@@ -121,8 +121,8 @@ repeat:
         if (req->dev<0)                        ///< 找到了设备
             break;
 /* if none found, sleep on new requests: check for rw_ahead */
-    if (req < request) {                    ///< 当前请求已经满了（超过 request 数组的大小了）
-        if (rw_ahead) {                        ///< 是否是预读请求
+    if (req < request) {                        ///< 当前请求已经满了（超过 request 数组的大小了）
+        if (rw_ahead) {                         ///< 是否是预读请求
             unlock_buffer(bh);                  ///< 队列满时可直接丢弃（避免阻塞主请求），由上层应用重试。
             return;
         }
@@ -132,10 +132,10 @@ repeat:
 /* fill up the request-info, and add it to the queue */
     req->dev = bh->b_dev;
     req->cmd = rw;
-    req->errors=0;
+    req->errors = 0;
     req->sector = bh->b_blocknr<<1;             ///< 1 个内核块 = 2 个磁盘扇区
     req->nr_sectors = 2;
-    req->buffer = bh->b_data;                ///< 内核块的位置
+    req->buffer = bh->b_data;                   ///< 内核块的位置
     req->waiting = NULL;
     req->bh = bh;
     req->next = NULL;

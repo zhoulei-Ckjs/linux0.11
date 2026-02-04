@@ -14,7 +14,7 @@
 #define HD_LCYL		0x1f4       /* starting cylinder */
 #define HD_HCYL		0x1f5       /* high byte of starting cyl */
 #define HD_CURRENT	0x1f6       /* 101dhhhh , d=drive, hhhh=head */
-#define HD_STATUS	0x1f7       /* see status-bits */
+#define HD_STATUS	0x1f7       /* 硬盘状态寄存器 */
 #define HD_PRECOMP HD_ERROR     /* same io address, read=error, write=precomp */
 #define HD_COMMAND HD_STATUS	/* same io address, read=status, write=cmd */
 
@@ -31,7 +31,7 @@
 #define BUSY_STAT	0x80
 
 /* Values for HD_COMMAND */
-#define WIN_RESTORE		0x10
+#define WIN_RESTORE		0x10	/* 恢复命令（Restore），用于将磁头移回 0 号柱面（即归位） */
 #define WIN_READ		0x20
 #define WIN_WRITE		0x30
 #define WIN_VERIFY		0x40

@@ -29,7 +29,7 @@ __asm__ ("movw %%dx,%%ax\n\t" \                         /* 将 dx 低 16 位给 
     "o" (*((char *) (gate_addr))), \
     "o" (*(4+(char *) (gate_addr))), \
     "d" ((char *) (addr)),"a" (0x00080000))             /* 0x0008 = 0b1_000，其中 1 表示选择子（内核代码段），最后 3 位为属性位（可以查阅段选择子进行了解）*/ 
-
+/* 设置中断门 */
 #define set_intr_gate(n,addr) \
     _set_gate(&idt[n], 14, 0, addr)
 

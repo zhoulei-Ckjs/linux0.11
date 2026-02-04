@@ -67,13 +67,13 @@ typedef char buffer_block[BLOCK_SIZE];
 
 struct buffer_head {
 	char * b_data;			        /* pointer to data block (1024 bytes) */
-	unsigned long b_blocknr;	    /* block number */
+	unsigned long b_blocknr;	    /* 对应硬盘的逻辑块号，标识这块内存对应磁盘的第多少个块 */
 	unsigned short b_dev;		    /* device (0 = free) */
 	unsigned char b_uptodate;		///< 表示该缓冲块（buffer）中的数据是否是最新的、已从磁盘读取或已正确写入的。
 	unsigned char b_dirt;		    /* 0-clean,1-dirty */
 	unsigned char b_count;		    /* users using this block */
 	unsigned char b_lock;		    /* 0 - ok, 1 -locked */
-	struct task_struct * b_wait;
+	struct task_struct * b_wait;    /* 等待在此内存块的进程 */
 	struct buffer_head * b_prev;
 	struct buffer_head * b_next;
 	struct buffer_head * b_prev_free;

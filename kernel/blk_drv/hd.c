@@ -31,20 +31,21 @@ inb_p(0x71); \
 })
 
 /* Max read/write errors/sector */
-#define MAX_ERRORS	7
+#define MAX_ERRORS	7           ///< 硬盘最大读写错误次数
 #define MAX_HD		2
 
 static void recal_intr(void);
 
 static int recalibrate = 1;
 static int reset = 1;           ///< 硬盘重置标识
-
-/*
- *  This struct defines the HD's and their types.
- */
+/* hd 结构。
+ * head：磁头号，标识硬盘的哪个磁头正在读写。sect：逻辑扇区号，指定当前要读写的扇区。
+ * cyl：柱面号。wpcom：写预补偿（早起硬盘中，当数据记录在高密度磁介质上时，相邻的磁记录位可能会相互干扰）。
+ * lzone：磁头在断电后应该放置的位置（随意放置可能破坏磁盘）。ctl：控制寄存器，控制硬盘的工作模式和操作命令。 */
 struct hd_i_struct {
     int head,sect,cyl,wpcom,lzone,ctl;
 };
+/* 硬盘结构 */
 #ifdef HD_TYPE
     struct hd_i_struct hd_info[] = { HD_TYPE };
     #define NR_HD ((sizeof (hd_info))/(sizeof (struct hd_i_struct)))
@@ -52,11 +53,11 @@ struct hd_i_struct {
     struct hd_i_struct hd_info[] = { {0,0,0,0,0,0},{0,0,0,0,0,0} };
     static int NR_HD = 0;    ///< 记录硬盘个数，后续在 bios 读取硬盘信息和 cmos 获取硬盘信息会修改
 #endif
-
+/* 硬盘设备分区 */
 static struct hd_struct {
-    long start_sect;
-    long nr_sects;
-} hd[5*MAX_HD]={{0,0},};
+    long start_sect;        ///< 起始扇区号
+    long nr_sects;          ///< 分区大小（扇区数）
+} hd[5*MAX_HD]={{0,0},};    ///< 每个盘有 5 个分区。
 
 #define port_read(port,buf,nr) \
 __asm__("cld;rep;insw"::"d" (port),"D" (buf),"c" (nr):"cx","di")
@@ -165,18 +166,18 @@ static int controller_ready(void)
     while (--retries && (inb_p(HD_STATUS)&0xc0)!=0x40);
     return (retries);
 }
-
+/* 读取硬盘返回结果，没有问题则返回 0，有问题则返回 1。 */
 static int win_result(void)
 {
-    int i=inb_p(HD_STATUS);
+    int i = inb_p(HD_STATUS);   ///< 从 0x1f7 端口获取处理结果
 
     if ((i & (BUSY_STAT | READY_STAT | WRERR_STAT | SEEK_STAT | ERR_STAT))
         == (READY_STAT | SEEK_STAT))
-        return(0); /* ok */
-    if (i&1) i=inb(HD_ERROR);
+        return(0); /* ok */     ///< 检测是否 READY，READY 则返回 0。
+    if (i&1) i=inb(HD_ERROR);   ///< 如果出现错误，则读取错误码
     return (1);
 }
-/* 硬盘执行重新校准操作，完成后硬盘产生 IRQ14 中断，CPU 跳转到中断向量 0x2E 进行处理 */
+/* 硬盘执行命令，完成后硬盘产生 IRQ14 中断，CPU 跳转到中断向量 0x2E 进行处理 */
 static void hd_out(unsigned int drive,unsigned int nsect,unsigned int sect,
         unsigned int head,unsigned int cyl,unsigned int cmd,
         void (*intr_addr)(void))
@@ -238,12 +239,12 @@ void unexpected_hd_interrupt(void)
 {
     printk("Unexpected HD interrupt\n\r");
 }
-
+/* 读写错误处理函数，当错误个数过多，清除 IO 队列头请求，设置重置磁盘标志。 */
 static void bad_rw_intr(void)
 {
-    if (++CURRENT->errors >= MAX_ERRORS)
-        end_request(0);
-    if (CURRENT->errors > MAX_ERRORS/2)
+    if (++CURRENT->errors >= MAX_ERRORS)    ///< 当前请求的错误数过多
+        end_request(0);                     ///< 结束 IO 请求
+    if (CURRENT->errors > MAX_ERRORS/2)     ///< 如果错误数过多，重置磁盘。
         reset = 1;
 }
 
@@ -283,12 +284,12 @@ static void write_intr(void)
     end_request(1);
     do_hd_request();
 }
-
+/* 硬盘初始化（WIN_SPECIFY）和重置硬盘磁头的操作（WIN_RESTORE），属于 IRQ14 的回调 */
 static void recal_intr(void)
 {
-    if (win_result())
+    if (win_result())       ///< 获取硬盘处理结果
         bad_rw_intr();
-    do_hd_request();
+    do_hd_request();        ///< 进一步处理请求
 }
 
 void do_hd_request(void)
@@ -299,20 +300,20 @@ void do_hd_request(void)
     unsigned int nsect;
 
     INIT_REQUEST;
-    dev = MINOR(CURRENT->dev);
-    block = CURRENT->sector;
+    dev = MINOR(CURRENT->dev);      ///< 次设备号。
+    block = CURRENT->sector;        ///< 起始扇区号。
     if (dev >= 5*NR_HD || block+2 > hd[dev].nr_sects) {    ///< 判断是否超出最大设备号，待读取的设备块不能越界
         end_request(0);
         goto repeat;
     }
-    block += hd[dev].start_sect;
-    dev /= 5;
+    block += hd[dev].start_sect;    ///< 结束位置。
+    dev /= 5;                       ///< 计算是第几个硬盘。
     __asm__("divl %4":"=a" (block),"=d" (sec):"0" (block),"1" (0),
         "r" (hd_info[dev].sect));
     __asm__("divl %4":"=a" (cyl),"=d" (head):"0" (block),"1" (0),
         "r" (hd_info[dev].head));
     sec++;
-    nsect = CURRENT->nr_sectors;
+    nsect = CURRENT->nr_sectors;    ///< 要读写扇区数
     if (reset) {
         reset = 0;
         recalibrate = 1;
@@ -321,8 +322,8 @@ void do_hd_request(void)
     }
     if (recalibrate) {
         recalibrate = 0;
-        hd_out(dev,hd_info[CURRENT_DEV].sect,0,0,0,
-            WIN_RESTORE,&recal_intr);
+        hd_out(dev,hd_info[CURRENT_DEV].sect, 0, 0, 0,
+            WIN_RESTORE, &recal_intr);      ///< 恢复命令（Restore），用于将磁头移回 0 号柱面（即归位）
         return;
     }	
     if (CURRENT->cmd == WRITE) {
@@ -334,8 +335,8 @@ void do_hd_request(void)
             goto repeat;
         }
         port_write(HD_DATA,CURRENT->buffer,256);
-    } else if (CURRENT->cmd == READ) {
-        hd_out(dev,nsect,sec,head,cyl,WIN_READ,&read_intr);
+    } else if (CURRENT->cmd == READ) {  ///< 读请求
+        hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);
     } else
         panic("unknown hd-command");
 }
