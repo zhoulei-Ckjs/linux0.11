@@ -43,7 +43,7 @@ void buffer_init(long buffer_end);
 #define NR_OPEN 20
 #define NR_INODE 32
 #define NR_FILE 64
-#define NR_SUPER 8
+#define NR_SUPER 8		/* 可以容纳 8 个已挂载文件系统的超级块 */
 #define NR_HASH 307
 #define NR_BUFFERS nr_buffers
 #define BLOCK_SIZE 1024
@@ -71,7 +71,7 @@ struct buffer_head {
 	unsigned short b_dev;		    /* device (0 = free) */
 	unsigned char b_uptodate;		///< 表示该缓冲块（buffer）中的数据是否是最新的、已从磁盘读取或已正确写入的。
 	unsigned char b_dirt;		    /* 0-clean,1-dirty */
-	unsigned char b_count;		    /* users using this block */
+	unsigned char b_count;		    /* 使用当前缓冲区的进程个数 */
 	unsigned char b_lock;		    /* 0 - ok, 1 -locked */
 	struct task_struct * b_wait;    /* 等待在此内存块的进程 */
 	struct buffer_head * b_prev;
@@ -81,13 +81,13 @@ struct buffer_head {
 };
 
 struct d_inode {
-	unsigned short i_mode;
-	unsigned short i_uid;
-	unsigned long i_size;
-	unsigned long i_time;
-	unsigned char i_gid;
-	unsigned char i_nlinks;
-	unsigned short i_zone[9];
+	unsigned short i_mode;		///< 文件类型和权限
+	unsigned short i_uid;		///< 所有者用户 ID
+	unsigned long i_size;		///< 文件大小（字节）
+	unsigned long i_time;		///< 最后修改时间
+	unsigned char i_gid;		///< 所属组 ID
+	unsigned char i_nlinks;		///< 硬链接数，当减小为0时，会删除
+	unsigned short i_zone[9];	///< 数据块指针数组
 };
 
 struct m_inode {
@@ -112,35 +112,35 @@ struct m_inode {
 	unsigned char i_seek;
 	unsigned char i_update;
 };
-
+/* 进程打开的文件 */
 struct file {
-	unsigned short f_mode;
-	unsigned short f_flags;
-	unsigned short f_count;
-	struct m_inode * f_inode;
-	off_t f_pos;
+	unsigned short f_mode;		///< 文件访问模式
+	unsigned short f_flags;		///< 文件状态标志
+	unsigned short f_count;		///< 文件引用计数
+	struct m_inode * f_inode;	///< 指向内存 inode
+	off_t f_pos;				///< 当前文件位置，偏移量
 };
 
 struct super_block {
-	unsigned short s_ninodes;
-	unsigned short s_nzones;
-	unsigned short s_imap_blocks;
-	unsigned short s_zmap_blocks;
-	unsigned short s_firstdatazone;
-	unsigned short s_log_zone_size;
-	unsigned long s_max_size;
-	unsigned short s_magic;
+	unsigned short s_ninodes;		///< inode 总数。
+	unsigned short s_nzones;		///< 磁盘总块数（1块 = 1KB）。
+	unsigned short s_imap_blocks;	///< inode 位图占用的磁盘块。
+	unsigned short s_zmap_blocks;	///< 块位图占用的磁盘块数。
+	unsigned short s_firstdatazone;	///< 第一个数据块的块号
+	unsigned short s_log_zone_size;	///< 
+	unsigned long s_max_size;		///<
+	unsigned short s_magic;			///< 魔数，Minix文件系统时 0x137F
 /* These are only in memory */
-	struct buffer_head * s_imap[8];
-	struct buffer_head * s_zmap[8];
-	unsigned short s_dev;
-	struct m_inode * s_isup;
-	struct m_inode * s_imount;
-	unsigned long s_time;
-	struct task_struct * s_wait;
-	unsigned char s_lock;
-	unsigned char s_rd_only;
-	unsigned char s_dirt;
+	struct buffer_head * s_imap[8];	///< inode 位图在内存中的缓冲
+	struct buffer_head * s_zmap[8];	///< 块位图在内存中的缓冲
+	unsigned short s_dev;			///< 该超级块对应的设备号（0x0301=/dev/hda1）
+	struct m_inode * s_isup;		///< 指向根目录的 inode（/目录）
+	struct m_inode * s_imount;		///< 如果该文件系统被 mount 到某个目录，指向该目录的 inode。
+	unsigned long s_time;			///< 最后一次修改时间
+	struct task_struct * s_wait;	///< 等待该超级块的进程队列
+	unsigned char s_lock;			///< 锁定标志，防止并发修改
+	unsigned char s_rd_only;		///< 只读标志
+	unsigned char s_dirt;			///< 脏标志
 };
 
 struct d_super_block {

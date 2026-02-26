@@ -26,7 +26,7 @@ struct request {
 	int errors;
 	unsigned long sector;			///< 起始扇区号
 	unsigned long nr_sectors;		///< 要读写的扇区数
-	char * buffer;
+	char * buffer;					///< buffer_head 指向的内存。
 	struct task_struct * waiting;	///< 当前发起 IO 请求的进程
 	struct buffer_head * bh;		///< 内存块头
 	struct request * next;

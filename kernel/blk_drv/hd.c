@@ -32,7 +32,7 @@ inb_p(0x71); \
 
 /* Max read/write errors/sector */
 #define MAX_ERRORS	7           ///< 硬盘最大读写错误次数
-#define MAX_HD		2
+#define MAX_HD		2           ///< 最多硬盘个数
 
 static void recal_intr(void);
 
@@ -57,9 +57,9 @@ struct hd_i_struct {
 static struct hd_struct {
     long start_sect;        ///< 起始扇区号
     long nr_sects;          ///< 分区大小（扇区数）
-} hd[5*MAX_HD]={{0,0},};    ///< 每个盘有 5 个分区。
-
-#define port_read(port,buf,nr) \
+} hd[5 * MAX_HD]={{0,0},};  ///< 每个盘有 5 个分区。
+/* 从端口读取（nr * 2）字节到buf中 */
+#define port_read(port, buf, nr) \
 __asm__("cld;rep;insw"::"d" (port),"D" (buf),"c" (nr):"cx","di")
 
 #define port_write(port,buf,nr) \
@@ -95,7 +95,7 @@ int sys_setup(void * BIOS)
     else
         NR_HD=1;
 #endif
-    for (i=0 ; i<NR_HD ; i++) {
+    for (i=0 ; i<NR_HD ; i++) {     ///< hd[0] 是整个硬盘（hda），参数来自 BIOS（CMOS）
         hd[i*5].start_sect = 0;
         hd[i*5].nr_sects = hd_info[i].head*
                 hd_info[i].sect*hd_info[i].cyl;
@@ -130,31 +130,40 @@ int sys_setup(void * BIOS)
             NR_HD = 1;
     else
         NR_HD = 0;
-    for (i = NR_HD ; i < 2 ; i++) {
+    for (i = NR_HD ; i < 2 ; i++) 
+    {
         hd[i*5].start_sect = 0;
         hd[i*5].nr_sects = 0;
     }
-    for (drive=0 ; drive<NR_HD ; drive++) {
-        if (!(bh = bread(0x300 + drive*5,0))) { ///< 0x300是第一块硬盘/dev/hd0，硬盘分区表在MBR内部，需要读取MBR来获取硬盘分区表（分区表位于MBR扇区最后66字节（64+0x55aa））。
-            printk("Unable to read partition table of drive %d\n\r",
-                drive);
+
+    /* 读取硬盘分区表 */
+    for (drive=0 ; drive < NR_HD ; drive++) 
+    {
+        /// 0x300是第一块硬盘/dev/hd0，硬盘分区表在MBR内部，
+        /// 需要读取MBR来获取硬盘分区表（分区表位于MBR扇区最后66字节（64+0x55aa））。
+        if (!(bh = bread(0x300 + drive*5,0))) 
+        {
+            printk("Unable to read partition table of drive %d\n\r", drive);
             panic("");
         }
-        if (bh->b_data[510] != 0x55 || (unsigned char)
-            bh->b_data[511] != 0xAA) {
+        if (bh->b_data[510] != 0x55 || (unsigned char) bh->b_data[511] != 0xAA) 
+        {
             printk("Bad partition table on drive %d\n\r",drive);
             panic("");
         }
-        p = 0x1BE + (void *)bh->b_data;
-        for (i=1;i<5;i++,p++) {
-            hd[i+5*drive].start_sect = p->start_sect;
-            hd[i+5*drive].nr_sects = p->nr_sects;
+        p = 0x1BE + (void *)bh->b_data; ///< 0x1BE 是分区表的起始位置（在 MBR 中，分区表从 0x1BE 开始）
+        
+        /// hd[1-4] 是 4 个主分区，来自 MBR 分区表。
+        for (i = 1; i < 5; i++, p++) 
+        {          
+            hd[i + 5*drive].start_sect = p->start_sect;
+            hd[i + 5*drive].nr_sects = p->nr_sects;
         }
-        brelse(bh);
+        brelse(bh);     ///< 读取完分区表后，释放该缓冲区
     }
     if (NR_HD)
         printk("Partition table%s ok.\n\r",(NR_HD>1)?"s":"");
-    rd_load();
+    rd_load();          ///< 如果是 ramdisk。
     mount_root();
     return (0);
 }
@@ -177,9 +186,12 @@ static int win_result(void)
     if (i&1) i=inb(HD_ERROR);   ///< 如果出现错误，则读取错误码
     return (1);
 }
-/* 硬盘执行命令，完成后硬盘产生 IRQ14 中断，CPU 跳转到中断向量 0x2E 进行处理 */
-static void hd_out(unsigned int drive,unsigned int nsect,unsigned int sect,
-        unsigned int head,unsigned int cyl,unsigned int cmd,
+/* 硬盘执行命令，完成后硬盘产生 IRQ14 中断，CPU 跳转到中断向量 0x2E 进行处理 
+ * nsect：待处理的扇区个数（512一个扇区）
+ * sect：待处理的起始扇区。
+ */
+static void hd_out(unsigned int drive, unsigned int nsect, unsigned int sect,
+        unsigned int head, unsigned int cyl, unsigned int cmd,
         void (*intr_addr)(void))
 {
     register int port asm("dx");                ///< 凡是涉及到 port 的操作都用 dx。
@@ -247,24 +259,24 @@ static void bad_rw_intr(void)
     if (CURRENT->errors > MAX_ERRORS/2)     ///< 如果错误数过多，重置磁盘。
         reset = 1;
 }
-
+/* 读取硬盘到映射的相应的缓冲区中，对blk_dev[hd]内部积攒的请求进行连续处理 */
 static void read_intr(void)
 {
-    if (win_result()) {
+    if (win_result()) {     ///< 获取硬盘处理结果
         bad_rw_intr();
-        do_hd_request();
+        do_hd_request();    ///< 如果读盘出错，则重置硬盘，重新校准
         return;
     }
-    port_read(HD_DATA,CURRENT->buffer,256);
+    port_read(HD_DATA, CURRENT->buffer, 256);   ///< 从 0x1F0 端口读取 512 字节到 buffer 中。
     CURRENT->errors = 0;
     CURRENT->buffer += 512;
     CURRENT->sector++;
     if (--CURRENT->nr_sectors) {
-        do_hd = &read_intr;
+        do_hd = &read_intr; ///< 如果要读取的扇区个数不为 0，则继续读取。（硬盘控制器在读取完一个扇区后，会自动准备下一个扇区，并再次触发 IRQ14。）
         return;
     }
     end_request(1);
-    do_hd_request();
+    do_hd_request();        ///< 如果有请求，继续处理下一个请求。
 }
 
 static void write_intr(void)
@@ -299,7 +311,7 @@ void do_hd_request(void)
     unsigned int sec,head,cyl;
     unsigned int nsect;
 
-    INIT_REQUEST;
+    INIT_REQUEST;                   ///< 如果无请求，则返回。
     dev = MINOR(CURRENT->dev);      ///< 次设备号。
     block = CURRENT->sector;        ///< 起始扇区号。
     if (dev >= 5*NR_HD || block+2 > hd[dev].nr_sects) {    ///< 判断是否超出最大设备号，待读取的设备块不能越界
@@ -322,7 +334,7 @@ void do_hd_request(void)
     }
     if (recalibrate) {
         recalibrate = 0;
-        hd_out(dev,hd_info[CURRENT_DEV].sect, 0, 0, 0,
+        hd_out(dev, hd_info[CURRENT_DEV].sect, 0, 0, 0,
             WIN_RESTORE, &recal_intr);      ///< 恢复命令（Restore），用于将磁头移回 0 号柱面（即归位）
         return;
     }	
@@ -336,7 +348,7 @@ void do_hd_request(void)
         }
         port_write(HD_DATA,CURRENT->buffer,256);
     } else if (CURRENT->cmd == READ) {  ///< 读请求
-        hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);
+        hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);   ///< dev = 0, nsect = 2, sec = 起始扇区 
     } else
         panic("unknown hd-command");
 }

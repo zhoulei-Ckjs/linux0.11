@@ -7,7 +7,7 @@
 #define _HDREG_H
 
 /* Hd controller regs. Ref: IBM AT Bios-listing */
-#define HD_DATA		0x1f0       /* _CTL when writing */
+#define HD_DATA		0x1f0       /* 硬盘数据端口 */
 #define HD_ERROR	0x1f1       /* 错误 | 预补偿寄存器，读操作时是错误寄存器；写操作时是预补偿寄存器。 */
 #define HD_NSECTOR	0x1f2       /* 需要读取或写入的扇区个数 */
 #define HD_SECTOR	0x1f3       /* 起始扇区 */

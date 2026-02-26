@@ -23,11 +23,12 @@ void wait_for_keypress(void);
 register int __res __asm__("ax"); \
 __asm__("bt %2,%3;setb %%al":"=a" (__res):"a" (0),"r" (bitnr),"m" (*(addr))); \
 __res; })
-
+/* 文件系统超级块 */
 struct super_block super_block[NR_SUPER];
-/* this is initialized in init/main.c */
+/* 在 main 里面初始化，得到 ROOT_DEV = 0x306（第二块硬盘第一个可用分区，非/dev/hdb，为/dev/hdb1）*/
 int ROOT_DEV = 0;
 
+/* 锁定超级块 */
 static void lock_super(struct super_block * sb)
 {
 	cli();
@@ -59,15 +60,19 @@ struct super_block * get_super(int dev)
 
 	if (!dev)
 		return NULL;
-	s = 0+super_block;
-	while (s < NR_SUPER+super_block)
-		if (s->s_dev == dev) {
+	s = 0 + super_block;
+	while (s < NR_SUPER + super_block)
+	{
+		if (s->s_dev == dev)		///< 如果超级块已经存在，则直接返回该超级块
+		{
 			wait_on_super(s);
 			if (s->s_dev == dev)
 				return s;
-			s = 0+super_block;
-		} else
+			s = 0 + super_block;
+		}
+		else
 			s++;
+	}
 	return NULL;
 }
 
@@ -97,7 +102,7 @@ void put_super(int dev)
 	return;
 }
 
-static struct super_block * read_super(int dev)
+static struct super_block * read_super(int dev)		///< dev = 0x306
 {
 	struct super_block * s;
 	struct buffer_head * bh;
@@ -106,14 +111,18 @@ static struct super_block * read_super(int dev)
 	if (!dev)
 		return NULL;
 	check_disk_change(dev);
-	if (s = get_super(dev))
+	if (s = get_super(dev))		///< 如果超级块已存在
 		return s;
-	for (s = 0+super_block ;; s++) {
-		if (s >= NR_SUPER+super_block)
+
+	/// 找一块未用的超级块
+	for (s = 0 + super_block ;; s++) 
+	{
+		if (s >= NR_SUPER + super_block)
 			return NULL;
 		if (!s->s_dev)
 			break;
 	}
+	/// 对该超级块进行初始化
 	s->s_dev = dev;
 	s->s_isup = NULL;
 	s->s_imount = NULL;
@@ -121,7 +130,8 @@ static struct super_block * read_super(int dev)
 	s->s_rd_only = 0;
 	s->s_dirt = 0;
 	lock_super(s);
-	if (!(bh = bread(dev,1))) {
+	if (!(bh = bread(dev, 1))) 
+	{
 		s->s_dev=0;
 		free_super(s);
 		return NULL;
@@ -247,20 +257,23 @@ void mount_root(void)
 
 	if (32 != sizeof (struct d_inode))
 		panic("bad i-node size");
-	for(i=0;i<NR_FILE;i++)
-		file_table[i].f_count=0;
-	if (MAJOR(ROOT_DEV) == 2) {
+	for(i = 0; i < NR_FILE; i++)
+		file_table[i].f_count = 0;		///< 文件引用计数为 0。
+	if (MAJOR(ROOT_DEV) == 2)			///< floppy 的处理。
+	{
 		printk("Insert root floppy and press ENTER");
 		wait_for_keypress();
 	}
-	for(p = &super_block[0] ; p < &super_block[NR_SUPER] ; p++) {
-		p->s_dev = 0;
-		p->s_lock = 0;
-		p->s_wait = NULL;
+	/// 初始化超级块
+	for(p = &super_block[0] ; p < &super_block[NR_SUPER] ; p++) 
+	{
+		p->s_dev = 0;					///< 超级块对应的设备号
+		p->s_lock = 0;					///< 非锁定
+		p->s_wait = NULL;				///< 等待该超级块的进程队列
 	}
-	if (!(p=read_super(ROOT_DEV)))
+	if (!(p = read_super(ROOT_DEV)))	///< ROOT_DEV = 0x306
 		panic("Unable to mount root");
-	if (!(mi=iget(ROOT_DEV,ROOT_INO)))
+	if (!(mi = iget(ROOT_DEV,ROOT_INO)))
 		panic("Unable to read root i-node");
 	mi->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
 	p->s_isup = p->s_imount = mi;

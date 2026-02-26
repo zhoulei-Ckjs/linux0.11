@@ -38,22 +38,26 @@ SETUPSEG = 0x9020			; setup starts here
 SYSSEG   = 0x1000			; system loaded at 0x10000 (65536).
 ENDSEG   = SYSSEG + SYSSIZE		; where to stop loading
 
-; ROOT_DEV:	0x000 - same type of floppy as boot.
-;		0x301 - first partition on first drive etc
-ROOT_DEV = 0x306
+; ROOT_DEV:	0x200 - floppy 作为 boot.
+;		0x301 - 第一个硬盘的第一个分区
+ROOT_DEV = 0x306	; 硬盘根设备号。0x306 其中0x3是主设备号，表示HD，6 是第 6 个分区，
+	; 0-4 是第一个硬盘的 5 个分区；5-9 为第二个硬盘的 5 个分区，6 则表示第二个硬盘的第 1 个可用分区
+	; 一般一个硬盘的第 1 个分区为硬盘标识，其余 4 个为可用分区。
 
 entry start
+; 将自身由 0x7c00 移动到 0x90000 处。
 start:
 	mov	ax,#BOOTSEG
 	mov	ds,ax
 	mov	ax,#INITSEG
 	mov	es,ax
-	mov	cx,#256
+	mov	cx,#256		; 拷贝 256 次
 	sub	si,si
 	sub	di,di
 	rep
 	movw
 	jmpi	go,INITSEG
+
 go:	mov	ax,cs
 	mov	ds,ax
 	mov	es,ax
@@ -246,11 +250,12 @@ msg1:
 	.ascii "Loading system ..."
 	.byte 13,10,13,10
 
+; 由于 bootsect 上来第一件事就是将自己移动到 0x90000 处，故当前位置变为 0x90000+508=0x901FC
 .org 508
 root_dev:
-	.word ROOT_DEV
+	.word ROOT_DEV		; 0x0306，根设备号，第二个磁盘第一个扇区
 boot_flag:
-	.word 0xAA55
+	.word 0xAA55		; 结尾标志
 
 .text
 endtext:

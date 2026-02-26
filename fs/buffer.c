@@ -32,7 +32,7 @@ struct buffer_head * hash_table[NR_HASH];
 static struct buffer_head * free_list;
 static struct task_struct * buffer_wait = NULL;
 int NR_BUFFERS = 0;         ///< buffer 块个数
-
+/* 等待读取完缓冲区（主要由硬盘初始化后触发 IRQ14 中断来完成） */
 static inline void wait_on_buffer(struct buffer_head * bh)
 {
     cli();                  ///< 关中断
@@ -110,7 +110,7 @@ void inline invalidate_buffers(int dev)
  * and that mount/open needn't know that floppies/whatever are
  * special.
  */
-void check_disk_change(int dev)
+void check_disk_change(int dev)     ///< 对 floppy 的检查
 {
     int i;
 
@@ -185,7 +185,7 @@ struct buffer_head * get_hash_table(int dev, int block)
     struct buffer_head * bh;
 
     for (;;) {
-        if (!(bh=find_buffer(dev,block)))
+        if (!(bh = find_buffer(dev, block)))
             return NULL;
         bh->b_count++;
         wait_on_buffer(bh);
@@ -249,34 +249,34 @@ repeat:
     insert_into_queues(bh);
     return bh;
 }
-
+/* 释放缓冲区，唤醒没有缓冲区可用的进程 */
 void brelse(struct buffer_head * buf)
 {
-    if (!buf)
+    if (!buf)                       ///< 如果缓冲区为空，则直接返回。
         return;
-    wait_on_buffer(buf);
+    wait_on_buffer(buf);            ///< 等待缓冲区没有被锁定
     if (!(buf->b_count--))
-        panic("Trying to free free buffer");
-    wake_up(&buffer_wait);
+        panic("Trying to free free buffer");    ///< 逻辑错误，缓冲区已被释放
+    wake_up(&buffer_wait);          ///< 这个队列中是拿不到缓冲区的队列，那我这里既然要释放该缓冲区了，说明这个缓冲区可以给别人用了，所以这里唤醒等获取缓冲区的进程。
 }
-
 /*
- * bread() reads a specified block and returns the buffer that contains
- * it. It returns NULL if the block was unreadable.
+ * bread() 读取一个特定的块到缓冲区中并且返回这个缓冲区
+ * 会等待读取完成。
+ * 如果无法读取，返回 NULL。（第一次读取了 MBR，第二次读取了 0x306）。
  */
 struct buffer_head * bread(int dev,int block)               ///< dev = 0x300, block = 0
 {
     struct buffer_head * bh;
 
-    if (!(bh=getblk(dev, block)))                           ///< 获取一个空闲链表头，这个链表头指向了空闲链表
+    if (!(bh = getblk(dev, block)))                         ///< 获取一个空闲链表头，这个链表头指向了空闲链表
         panic("bread: getblk returned NULL\n");
     if (bh->b_uptodate)                                     ///< 内存块最新（与硬盘内容一致），则返回内存块。如果不一致的话就需要等待读取硬盘块到内存块中。
         return bh;
     ll_rw_block(READ, bh);                                  ///< 创建读取硬盘块请求，这里是读取MBR。 
-    wait_on_buffer(bh);
-    if (bh->b_uptodate)
+    wait_on_buffer(bh);                                     ///< 进行进程切换，让出 CPU 并等待读取磁盘完成（主要是IRQ14中断触发来完成硬盘读取）。
+    if (bh->b_uptodate)                                     ///< 当前内存与硬盘一致则返回 buffer_head，buffer_head里面存储了与硬盘映射后的内存。
         return bh;
-    brelse(bh);
+    brelse(bh);                                             ///< 读取失败，释放缓冲区
     return NULL;
 }
 
