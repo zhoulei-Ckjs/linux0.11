@@ -38,12 +38,13 @@ static void lock_super(struct super_block * sb)
 	sti();
 }
 
+/* 释放超级块，将 lock 标志解除，并唤醒等待在这个超级块上的进程 */
 static void free_super(struct super_block * sb)
 {
-	cli();
-	sb->s_lock = 0;
-	wake_up(&(sb->s_wait));
-	sti();
+	cli();					///< 关中断
+	sb->s_lock = 0;			///< 释放 lock
+	wake_up(&(sb->s_wait));	///< 唤醒等待在此超级块的进程
+	sti();					///< 开中断
 }
 
 static void wait_on_super(struct super_block * sb)
@@ -130,27 +131,28 @@ static struct super_block * read_super(int dev)		///< dev = 0x306
 	s->s_rd_only = 0;
 	s->s_dirt = 0;
 	lock_super(s);
-	if (!(bh = bread(dev, 1))) 
+	if (!(bh = bread(dev, 1)))		///< 读取 0x306 的第 1 个块，即 inode。
 	{
 		s->s_dev=0;
 		free_super(s);
 		return NULL;
 	}
-	*((struct d_super_block *) s) =
-		*((struct d_super_block *) bh->b_data);
-	brelse(bh);
-	if (s->s_magic != SUPER_MAGIC) {
+	*((struct d_super_block *) s) = *((struct d_super_block *) bh->b_data);	///< 复制超级块的内容。
+
+	brelse(bh);						///< 释放缓冲区
+	if (s->s_magic != SUPER_MAGIC)	///< 超级块的标识不符处理
+	{
 		s->s_dev = 0;
 		free_super(s);
 		return NULL;
 	}
-	for (i=0;i<I_MAP_SLOTS;i++)
+	for (i = 0; i < I_MAP_SLOTS; i++)
 		s->s_imap[i] = NULL;
 	for (i=0;i<Z_MAP_SLOTS;i++)
 		s->s_zmap[i] = NULL;
-	block=2;
-	for (i=0 ; i < s->s_imap_blocks ; i++)
-		if (s->s_imap[i]=bread(dev,block))
+	block = 2;						///< linux0.11 中 1 个 block 大小为 1024 字节，那读取 block = 2 就是读取 1024~2047 磁盘的数据。
+	for (i = 0 ; i < s->s_imap_blocks ; i++)
+		if (s->s_imap[i] = bread(dev, block))
 			block++;
 		else
 			break;

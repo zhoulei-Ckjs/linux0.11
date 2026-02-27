@@ -261,7 +261,7 @@ void brelse(struct buffer_head * buf)
 }
 /*
  * bread() 读取一个特定的块到缓冲区中并且返回这个缓冲区
- * 会等待读取完成。
+ * 会等待读取完成，读取块大小为 512 * 2 = 1K。
  * 如果无法读取，返回 NULL。（第一次读取了 MBR，第二次读取了 0x306）。
  */
 struct buffer_head * bread(int dev,int block)               ///< dev = 0x300, block = 0

@@ -84,6 +84,7 @@ static void add_request(struct blk_dev_struct * dev, struct request * req)
     tmp->next=req;
     sti();
 }
+
 /* 将请求加入到 blk_dev 的请求队列中，major 为硬盘主设备号（0x0300 的主设备号为 3） */
 static void make_request(int major,int rw, struct buffer_head * bh)        ///< major = 0b0011，rw = READ，bh 为空闲链表头
 {
@@ -92,7 +93,8 @@ static void make_request(int major,int rw, struct buffer_head * bh)        ///< 
 
     /* WRITEA/READA是预读写，起始并不是真正的需要，因此，如果内存块是锁定的，那就不用处理了 */
     /* 否则将请求当作是常规的读写请求 */
-    if (rw_ahead = (rw == READA || rw == WRITEA)) {
+    if (rw_ahead = (rw == READA || rw == WRITEA)) 
+    {
         if (bh->b_lock)     ///< 如果被锁定，就不用处理了。
             return;
         if (rw == READA)
@@ -103,10 +105,14 @@ static void make_request(int major,int rw, struct buffer_head * bh)        ///< 
     if (rw!=READ && rw!=WRITE)
         panic("Bad block dev command, must be R/W/RA/WA");
     lock_buffer(bh);
-    if ((rw == WRITE && !bh->b_dirt) || (rw == READ && bh->b_uptodate)) {        ///< 如果是读请求，判断内存中的磁盘块是否是最新的，如果是最新的，直接返回
+
+    /// 如果是读请求，判断内存中的磁盘块是否是最新的，如果是最新的，直接返回
+    if ((rw == WRITE && !bh->b_dirt) || (rw == READ && bh->b_uptodate)) 
+    {        
         unlock_buffer(bh);
         return;
     }
+
 repeat:
 /* we don't allow the write-requests to fill up the queue completely:
  * we want some room for reads: they take precedence. The last third            ///< 前 2/3 作为写请求
@@ -115,14 +121,16 @@ repeat:
     if (rw == READ)
         req = request + NR_REQUEST;            ///< NR_REQUEST = 32
     else
-        req = request+((NR_REQUEST*2)/3);
+        req = request+((NR_REQUEST*2) / 3);
 /* find an empty request */
     while (--req >= request)
         if (req->dev<0)                        ///< 找到了设备
             break;
 /* if none found, sleep on new requests: check for rw_ahead */
-    if (req < request) {                        ///< 当前请求已经满了（超过 request 数组的大小了）
-        if (rw_ahead) {                         ///< 是否是预读请求
+    if (req < request)  ///< 当前请求已经满了（超过 request 数组的大小了）
+    {                        
+        if (rw_ahead)                           ///< 是否是预读请求
+        {
             unlock_buffer(bh);                  ///< 队列满时可直接丢弃（避免阻塞主请求），由上层应用重试。
             return;
         }
@@ -146,8 +154,8 @@ void ll_rw_block(int rw, struct buffer_head * bh)
 {
     unsigned int major;
 
-    if ((major=MAJOR(bh->b_dev)) >= NR_BLK_DEV ||                    ///< major = 0
-    !(blk_dev[major].request_fn)) {
+    if ((major = MAJOR(bh->b_dev)) >= NR_BLK_DEV || !(blk_dev[major].request_fn)) 
+    {
         printk("Trying to read nonexistent block-device\n\r");
         return;
     }
