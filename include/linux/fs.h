@@ -67,7 +67,7 @@ typedef char buffer_block[BLOCK_SIZE];
 
 struct buffer_head {
 	char * b_data;			        /* pointer to data block (1024 bytes) */
-	unsigned long b_blocknr;	    /* 对应硬盘的逻辑块号，标识这块内存对应磁盘的第多少个块 */
+	unsigned long b_blocknr;			/* 对应硬盘的逻辑块号，标识这块内存对应磁盘的第多少个块 */
 	unsigned short b_dev;		    /* device (0 = free) */
 	unsigned char b_uptodate;		///< 表示该缓冲块（buffer）中的数据是否是最新的、已从磁盘读取或已正确写入的。
 	unsigned char b_dirt;		    /* 0-clean,1-dirty */
@@ -90,28 +90,30 @@ struct d_inode {
 	unsigned short i_zone[9];	///< 数据块指针数组
 };
 
-struct m_inode {
-	unsigned short i_mode;
-	unsigned short i_uid;
-	unsigned long i_size;
-	unsigned long i_mtime;
-	unsigned char i_gid;
+struct m_inode 
+{
+	unsigned short i_mode;          ///< 文件模式
+	unsigned short i_uid;           ///< 文件所有者的用户标识符
+	unsigned long i_size;           ///< 文件大小
+	unsigned long i_mtime;          ///< 文件内容最后一次被修改的时间戳
+	unsigned char i_gid;            ///< 文件所属组的标识符
 	unsigned char i_nlinks;
-	unsigned short i_zone[9];
+	unsigned short i_zone[9];       ///< 数据块指针，指向文件实际数据存储的物理块号，前7个直接指针，第8个为一级指针，第9个为二级指针。
 /* these are in memory also */
-	struct task_struct * i_wait;
-	unsigned long i_atime;
-	unsigned long i_ctime;
-	unsigned short i_dev;
-	unsigned short i_num;
-	unsigned short i_count;
-	unsigned char i_lock;
-	unsigned char i_dirt;
-	unsigned char i_pipe;
-	unsigned char i_mount;
-	unsigned char i_seek;
-	unsigned char i_update;
+	struct task_struct * i_wait;    ///< 等待该文件的进程队列。
+	unsigned long i_atime;          ///< 访问时间，文件最后被读取（Read）的时间。
+	unsigned long i_ctime;          ///< 状态改变时间，文件元数据（如权限、所有者）最后被修改的时间。
+	unsigned short i_dev;           ///< 设备号，该 inode 所在的设备编号（如 0x301 代表 hda1）。
+	unsigned short i_num;           ///< Inode 编号，该 inode 在文件系统中的唯一编号（索引）。
+	unsigned short i_count;         ///< 引用计数，记录当前有多少个进程或数据结构正在使用这个 inode。
+	unsigned char i_lock;           ///< 锁标志。
+	unsigned char i_dirt;           ///< 脏标记。
+	unsigned char i_pipe;           ///< 管道标记，如果该 inode 代表一个命名管道（FIFO），此标志置 1。
+	unsigned char i_mount;          ///< 挂载点标记，如果该 inode 是一个文件系统的挂载点（Mount Point），此标志置 1。
+	unsigned char i_seek;           ///< 寻址标记，内部使用，通常与文件偏移量相关，标记是否需要进行特殊的寻址操作。
+	unsigned char i_update;         ///< 更新标记，辅助标志，用于标记某些特定的更新状态，配合 i_dirt 使用。
 };
+
 /* 进程打开的文件 */
 struct file {
 	unsigned short f_mode;		///< 文件访问模式
@@ -123,23 +125,23 @@ struct file {
 
 struct super_block {
 	unsigned short s_ninodes;		///< inode 总数。
-	unsigned short s_nzones;		///< 磁盘总块数（1块 = 1KB）。
-	unsigned short s_imap_blocks;	///< inode 位图占用的磁盘块。
-	unsigned short s_zmap_blocks;	///< 块位图占用的磁盘块数。
+	unsigned short s_nzones;			///< 磁盘总块数（1块 = 1KB）。
+	unsigned short s_imap_blocks;	///< inode 位图占用的逻辑块数量（一个逻辑块 1KB）。
+	unsigned short s_zmap_blocks;	///< 数据块位图占用的磁盘块数（每个数据块 1KB）。
 	unsigned short s_firstdatazone;	///< 第一个数据块的块号
 	unsigned short s_log_zone_size;	///< 
 	unsigned long s_max_size;		///<
 	unsigned short s_magic;			///< 魔数，Minix文件系统时 0x137F
 /* These are only in memory */
 	struct buffer_head * s_imap[8];	///< inode 位图在内存中的缓冲
-	struct buffer_head * s_zmap[8];	///< 块位图在内存中的缓冲
+	struct buffer_head * s_zmap[8];	///< 数据块位图在内存中的缓冲
 	unsigned short s_dev;			///< 该超级块对应的设备号（0x0301=/dev/hda1）
-	struct m_inode * s_isup;		///< 指向根目录的 inode（/目录）
+	struct m_inode * s_isup;			///< 指向根目录的 inode（/目录）
 	struct m_inode * s_imount;		///< 如果该文件系统被 mount 到某个目录，指向该目录的 inode。
 	unsigned long s_time;			///< 最后一次修改时间
-	struct task_struct * s_wait;	///< 等待该超级块的进程队列
+	struct task_struct * s_wait;		///< 等待该超级块的进程队列
 	unsigned char s_lock;			///< 锁定标志，防止并发修改
-	unsigned char s_rd_only;		///< 只读标志
+	unsigned char s_rd_only;			///< 只读标志
 	unsigned char s_dirt;			///< 脏标志
 };
 

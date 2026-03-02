@@ -38,7 +38,7 @@ static void lock_super(struct super_block * sb)
 	sti();
 }
 
-/* 释放超级块，将 lock 标志解除，并唤醒等待在这个超级块上的进程 */
+/* 将超级块 lock 标志解除，并唤醒等待在这个超级块上的进程 */
 static void free_super(struct super_block * sb)
 {
 	cli();					///< 关中断
@@ -103,6 +103,7 @@ void put_super(int dev)
 	return;
 }
 
+/* 读取磁盘中的超级块和紧随超级块的inode位图以及数据块位图 */
 static struct super_block * read_super(int dev)		///< dev = 0x306
 {
 	struct super_block * s;
@@ -151,28 +152,33 @@ static struct super_block * read_super(int dev)		///< dev = 0x306
 	for (i=0;i<Z_MAP_SLOTS;i++)
 		s->s_zmap[i] = NULL;
 	block = 2;						///< linux0.11 中 1 个 block 大小为 1024 字节，那读取 block = 2 就是读取 1024~2047 磁盘的数据。
-	for (i = 0 ; i < s->s_imap_blocks ; i++)
+	
+	/* 读取 inode 位图 */
+	for (i = 0 ; i < s->s_imap_blocks ; i++)	///< 告诉内核需要读取多少个逻辑块才能把整个 Inode 位图读入内存
 		if (s->s_imap[i] = bread(dev, block))
 			block++;
 		else
 			break;
+	/* 读取数据块位图 */
 	for (i=0 ; i < s->s_zmap_blocks ; i++)
-		if (s->s_zmap[i]=bread(dev,block))
+		if (s->s_zmap[i] = bread(dev, block))
 			block++;
 		else
 			break;
-	if (block != 2+s->s_imap_blocks+s->s_zmap_blocks) {
-		for(i=0;i<I_MAP_SLOTS;i++)
+	/* 进行两种块的校验 */
+	if (block != 2 + s->s_imap_blocks + s->s_zmap_blocks) 
+	{
+		for(i = 0; i < I_MAP_SLOTS; i++)
 			brelse(s->s_imap[i]);
-		for(i=0;i<Z_MAP_SLOTS;i++)
+		for(i = 0; i < Z_MAP_SLOTS; i++)
 			brelse(s->s_zmap[i]);
-		s->s_dev=0;
+		s->s_dev = 0;
 		free_super(s);
 		return NULL;
 	}
-	s->s_imap[0]->b_data[0] |= 1;
-	s->s_zmap[0]->b_data[0] |= 1;
-	free_super(s);
+	s->s_imap[0]->b_data[0] |= 1;    ///< inode0 已经被占用
+	s->s_zmap[0]->b_data[0] |= 1;    ///< 数据块0 已经被占用
+	free_super(s);                   ///< 解除lock标志，唤醒等待在此的进程。
 	return s;
 }
 
@@ -273,9 +279,9 @@ void mount_root(void)
 		p->s_lock = 0;					///< 非锁定
 		p->s_wait = NULL;				///< 等待该超级块的进程队列
 	}
-	if (!(p = read_super(ROOT_DEV)))	///< ROOT_DEV = 0x306
+	if (!(p = read_super(ROOT_DEV)))    ///< ROOT_DEV = 0x306
 		panic("Unable to mount root");
-	if (!(mi = iget(ROOT_DEV,ROOT_INO)))
+	if (!(mi = iget(ROOT_DEV, ROOT_INO)))   ///< ROOT_DEV = 0x306
 		panic("Unable to read root i-node");
 	mi->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
 	p->s_isup = p->s_imount = mi;

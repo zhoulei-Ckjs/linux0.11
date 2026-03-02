@@ -241,7 +241,7 @@ struct m_inode * get_pipe_inode(void)
 	return inode;
 }
 
-struct m_inode * iget(int dev,int nr)
+struct m_inode * iget(int dev, int nr)    ///< dev = 0x306, nr = 1
 {
 	struct m_inode * inode, * empty;
 
