@@ -47,6 +47,7 @@ static void free_super(struct super_block * sb)
 	sti();					///< 开中断
 }
 
+/* 等待超级块解锁 */
 static void wait_on_super(struct super_block * sb)
 {
 	cli();
@@ -55,6 +56,7 @@ static void wait_on_super(struct super_block * sb)
 	sti();
 }
 
+/* 获取超级块，当超级块不存在时返回空 */
 struct super_block * get_super(int dev)
 {
 	struct super_block * s;
@@ -103,7 +105,7 @@ void put_super(int dev)
 	return;
 }
 
-/* 读取磁盘中的超级块和紧随超级块的inode位图以及数据块位图 */
+/* 读取磁盘中的 超级块 和 紧随超级块的 inode 位图 以及 数据块位图 */
 static struct super_block * read_super(int dev)		///< dev = 0x306
 {
 	struct super_block * s;
@@ -132,7 +134,7 @@ static struct super_block * read_super(int dev)		///< dev = 0x306
 	s->s_rd_only = 0;
 	s->s_dirt = 0;
 	lock_super(s);
-	if (!(bh = bread(dev, 1)))		///< 读取 0x306 的第 1 个块，即 inode。
+	if (!(bh = bread(dev, 1)))		///< 读取 0x306 的第 1 个块，即 超级块。
 	{
 		s->s_dev=0;
 		free_super(s);

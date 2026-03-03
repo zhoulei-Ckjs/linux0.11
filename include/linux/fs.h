@@ -80,7 +80,9 @@ struct buffer_head {
 	struct buffer_head * b_next_free;
 };
 
-struct d_inode {
+/* 硬盘 inode */
+struct d_inode 
+{
 	unsigned short i_mode;		///< 文件类型和权限
 	unsigned short i_uid;		///< 所有者用户 ID
 	unsigned long i_size;		///< 文件大小（字节）
@@ -90,6 +92,7 @@ struct d_inode {
 	unsigned short i_zone[9];	///< 数据块指针数组
 };
 
+/* 内存 inode */
 struct m_inode 
 {
 	unsigned short i_mode;          ///< 文件模式

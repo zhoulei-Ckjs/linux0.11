@@ -12,6 +12,7 @@
 #include <linux/mm.h>
 #include <asm/system.h>
 
+/// 整个系统同时只能有 32 个文件处于“打开”状态（或者说，同时只有 32 个文件的元数据被缓存在内存中）。
 struct m_inode inode_table[NR_INODE]={{0,},};
 
 static void read_inode(struct m_inode * inode);
@@ -25,6 +26,7 @@ static inline void wait_on_inode(struct m_inode * inode)
 	sti();
 }
 
+/* 等待 inode 解锁 */
 static inline void lock_inode(struct m_inode * inode)
 {
 	cli();
@@ -34,9 +36,10 @@ static inline void lock_inode(struct m_inode * inode)
 	sti();
 }
 
+/* 解锁 inode，唤醒等待在此 inode 上的进程 */
 static inline void unlock_inode(struct m_inode * inode)
 {
-	inode->i_lock=0;
+	inode->i_lock = 0;
 	wake_up(&inode->i_wait);
 }
 
@@ -199,23 +202,27 @@ struct m_inode * get_empty_inode(void)
 
 	do {
 		inode = NULL;
-		for (i = NR_INODE; i ; i--) {
+		/// 从 inode 表中寻找空闲 inode
+		for (i = NR_INODE; i ; i--) 
+		{
 			if (++last_inode >= inode_table + NR_INODE)
 				last_inode = inode_table;
-			if (!last_inode->i_count) {
+			if (!last_inode->i_count)
+			{
 				inode = last_inode;
 				if (!inode->i_dirt && !inode->i_lock)
 					break;
 			}
 		}
-		if (!inode) {
-			for (i=0 ; i<NR_INODE ; i++)
-				printk("%04x: %6d\t",inode_table[i].i_dev,
-					inode_table[i].i_num);
+		if (!inode)	    ///< 找不到空闲 inode 时打印提示信息
+		{
+			for (i=0 ; i < NR_INODE ; i++)
+				printk("%04x: %6d\t",inode_table[i].i_dev, inode_table[i].i_num);
 			panic("No free inodes in mem");
 		}
-		wait_on_inode(inode);
-		while (inode->i_dirt) {
+		wait_on_inode(inode);    ///< 等待 inode 解锁。
+		while (inode->i_dirt)    ///< 同步 inode。
+		{
 			write_inode(inode);
 			wait_on_inode(inode);
 		}
@@ -318,14 +325,15 @@ static void write_inode(struct m_inode * inode)
 	int block;
 
 	lock_inode(inode);
-	if (!inode->i_dirt || !inode->i_dev) {
+	if (!inode->i_dirt || !inode->i_dev) 
+	{
 		unlock_inode(inode);
 		return;
 	}
-	if (!(sb=get_super(inode->i_dev)))
+	if (!(sb = get_super(inode->i_dev)))    ///< 只有当设备被成功挂载后，内核的 super_block 数组中才会存在一个对应的条目
 		panic("trying to write inode without device");
 	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks +
-		(inode->i_num-1)/INODES_PER_BLOCK;
+		(inode->i_num - 1) / INODES_PER_BLOCK;
 	if (!(bh=bread(inode->i_dev,block)))
 		panic("unable to read i-node block");
 	((struct d_inode *)bh->b_data)
