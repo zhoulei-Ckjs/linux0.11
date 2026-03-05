@@ -32,6 +32,7 @@ struct buffer_head * hash_table[NR_HASH];
 static struct buffer_head * free_list;
 static struct task_struct * buffer_wait = NULL;
 int NR_BUFFERS = 0;         ///< buffer 块个数
+
 /* 等待读取完缓冲区（主要由硬盘初始化后触发 IRQ14 中断来完成） */
 static inline void wait_on_buffer(struct buffer_head * bh)
 {
@@ -62,7 +63,8 @@ int sync_dev(int dev)
     struct buffer_head * bh;
 
     bh = start_buffer;
-    for (i=0 ; i<NR_BUFFERS ; i++,bh++) {
+    for (i=0 ; i < NR_BUFFERS ; i++, bh++) 
+    {
         if (bh->b_dev != dev)
             continue;
         wait_on_buffer(bh);
@@ -71,12 +73,13 @@ int sync_dev(int dev)
     }
     sync_inodes();
     bh = start_buffer;
-    for (i=0 ; i<NR_BUFFERS ; i++,bh++) {
+    for (i=0 ; i < NR_BUFFERS ; i++, bh++) 
+    {
         if (bh->b_dev != dev)
             continue;
         wait_on_buffer(bh);
         if (bh->b_dev == dev && bh->b_dirt)
-            ll_rw_block(WRITE,bh);
+            ll_rw_block(WRITE, bh);
     }
     return 0;
 }
@@ -125,9 +128,11 @@ void check_disk_change(int dev)     ///< 对 floppy 的检查
     invalidate_buffers(dev);
 }
 
+/* 内存 hash 桶 */
 #define _hashfn(dev,block) (((unsigned)(dev^block))%NR_HASH)
 #define hash(dev,block) hash_table[_hashfn(dev,block)]
-/* 将内存块移出hash表和free_list */
+
+/* 将内存块移出 hash 表和 free_list */
 static inline void remove_from_queues(struct buffer_head * bh)
 {
 /* remove from hash-queue */
@@ -146,6 +151,7 @@ static inline void remove_from_queues(struct buffer_head * bh)
         free_list = bh->b_next_free;
 }
 
+/* 插入到空闲队列尾部，并放入 hash_table 中 */
 static inline void insert_into_queues(struct buffer_head * bh)
 {
 /* put at end of free list */
@@ -153,29 +159,35 @@ static inline void insert_into_queues(struct buffer_head * bh)
     bh->b_prev_free = free_list->b_prev_free;
     free_list->b_prev_free->b_next_free = bh;
     free_list->b_prev_free = bh;
+
 /* put the buffer in new hash-queue if it has a device */
     bh->b_prev = NULL;
     bh->b_next = NULL;
     if (!bh->b_dev)            ///< 0x300
         return;
-    bh->b_next = hash(bh->b_dev,bh->b_blocknr);        ///< 放入到 hash_table 中
+
+    /// 放入到 hash_table 的桶中
+    bh->b_next = hash(bh->b_dev,bh->b_blocknr);        
     hash(bh->b_dev,bh->b_blocknr) = bh;
     bh->b_next->b_prev = bh;
 }
 
+/* 从 hash 桶中寻找对应设备 dev 的对应块 block，找到了则返回这个内存，找不到返回 NULL */
 static struct buffer_head * find_buffer(int dev, int block)
-{        
+{
     struct buffer_head * tmp;
 
-    for (tmp = hash(dev,block) ; tmp != NULL ; tmp = tmp->b_next)
-        if (tmp->b_dev==dev && tmp->b_blocknr==block)
+    for (tmp = hash(dev, block); tmp != NULL; tmp = tmp->b_next)
+        if (tmp->b_dev == dev && tmp->b_blocknr == block)
             return tmp;
     return NULL;
 }
 
 /*
+ * 获取到对应设备 dev 的对应块 block 对应的内存映射 buffer_head。
+ * 未找到则返回 NULL。
  * Why like this, I hear you say... The reason is race-conditions.
- * As we don't lock buffers (unless we are readint them, that is),
+ * As we don't lock buffers (unless we are reading them, that is),
  * something might happen to it while we sleep (ie a read-error
  * will force it bad). This shouldn't really happen currently, but
  * the code is ready.
@@ -184,7 +196,8 @@ struct buffer_head * get_hash_table(int dev, int block)
 {
     struct buffer_head * bh;
 
-    for (;;) {
+    for (;;) 
+    {
         if (!(bh = find_buffer(dev, block)))
             return NULL;
         bh->b_count++;
@@ -208,35 +221,51 @@ struct buffer_head * getblk(int dev,int block)
     struct buffer_head * tmp, * bh;
 
 repeat:
-    if (bh = get_hash_table(dev,block))                     ///< 如果当前块在 hash_table 里，则直接返回
+    /// 如果当前块在 hash_table 里，则直接返回
+    if (bh = get_hash_table(dev, block))
         return bh;
+
     tmp = free_list;                    ///< 可用内存循环链表头
     do {
         if (tmp->b_count)               ///< 判断内存块是否被使用，是就继续找下一块
             continue;
-        if (!bh || BADNESS(tmp)<BADNESS(bh)) {
+        if (!bh || BADNESS(tmp) < BADNESS(bh)) ///< !bh为首次进入的情况，BADNESS(tmp) < BADNESS(bh)为找到了更好的 buffer_head
+        {
             bh = tmp;                   ///< 找到了内存块
             if (!BADNESS(tmp))          ///< 不是脏的 & 不被锁定
                 break;
         }
 /* and repeat until we find something good */
     } while ((tmp = tmp->b_next_free) != free_list);        ///< 循环检查一圈，来寻找空闲内存块
-    if (!bh) {                          ///< 找了一圈都没找到，睡一觉重新找
+    
+    /// 找了一圈都没找到，睡一觉重新找
+    if (!bh) 
+    {
         sleep_on(&buffer_wait);
         goto repeat;
     }
-    wait_on_buffer(bh);
-    if (bh->b_count)
+
+    /// 走到这里有两种情况。
+    /// 第一种情况：找到了一块干净的 buffer_head，即 b_dirt 和 b_lock 都为 0，这是最理想的情况。
+    /// 第二种情况：找了一圈没有干净的 buffer_head，说明被用空了，这时由上面的 while 循环可知，bh=free_list，
+    ///             即拿到了最久的 buffer_head，因为free_list是尾插法（新用一块就插入 free_list 末尾）
+    ///             这个时候就需要将这个内存同步到对应的磁盘中再拿来用了。
+    wait_on_buffer(bh);      ///< 等待 bh 不被锁定。
+    if (bh->b_count)         ///< 如果还有人在使用这个内存，重新找。
         goto repeat;
-    while (bh->b_dirt) {
+
+    /// 走到这里，说明找到一块没人用的内存块，如果当前块为脏，则需要写入磁盘
+    while (bh->b_dirt) 
+    {
         sync_dev(bh->b_dev);
         wait_on_buffer(bh);
         if (bh->b_count)
             goto repeat;
     }
+
 /* NOTE!! While we slept waiting for this block, somebody else might */
 /* already have added "this" block to the cache. check it */
-    if (find_buffer(dev,block))
+    if (find_buffer(dev, block))
         goto repeat;
 /* OK, FINALLY we know that this buffer is the only one of it's kind, */
 /* and that it's unused (b_count=0), unlocked (b_lock=0), and clean */
@@ -244,11 +273,12 @@ repeat:
     bh->b_dirt=0;
     bh->b_uptodate=0;                           ///< 并不是磁盘中最新的
     remove_from_queues(bh);                     ///< 将内存块移出hash表和free_list
-    bh->b_dev=dev;
-    bh->b_blocknr=block;
+    bh->b_dev = dev;
+    bh->b_blocknr = block;
     insert_into_queues(bh);
     return bh;
 }
+
 /* 释放缓冲区，唤醒没有缓冲区可用的进程 */
 void brelse(struct buffer_head * buf)
 {
@@ -345,17 +375,22 @@ struct buffer_head * breada(int dev,int first, ...)
     return (NULL);
 }
 
+/* 
+ * 初始化缓存磁盘的内存（需要将磁盘块读入到内存块中来访问，专门留了部分内存来进行磁盘->内存映射），这部分为 free_list
+ * 初始化 hash_table，分配出去的 buffer_head 会插入到这个 hash 表中。
+ */
 void buffer_init(long buffer_end)                   ///< buffer_end = 4*1024*1024
 {
     struct buffer_head * h = start_buffer;          ///< 代码段、数据段以及 bss 段的结束
     void * b;
     int i;
 
-    if (buffer_end == 1<<20)
-        b = (void *) (640*1024);
+    if (buffer_end == 1 << 20)
+        b = (void *) (640 * 1024);
     else
         b = (void *) buffer_end;                    ///< b = 4M
-    while ( (b -= BLOCK_SIZE) >= ((void *) (h+1)) ) {        ///< 从 4M 往前的每个 1K 都定义为 buffer_head，并进行初始化
+    while ( (b -= BLOCK_SIZE) >= ((void *) (h+1)) ) ///< 从 4M 往前的每个 1K 都定义为 buffer_head，并进行初始化
+    {
         h->b_dev = 0;
         h->b_dirt = 0;
         h->b_count = 0;
@@ -369,13 +404,13 @@ void buffer_init(long buffer_end)                   ///< buffer_end = 4*1024*102
         h->b_next_free = h+1;
         h++;
         NR_BUFFERS++;
-        if (b == (void *) 0x100000)                 ///< 跳过 1M ~ 0xA0000 之间的内存（显存和bios ROM内存）
+        if (b == (void *) 0x100000)                 ///< 跳过 1M ~ 0xA0000 之间的内存（显存和 bios ROM 内存）
             b = (void *) 0xA0000;
     }
     h--;                ///< h++ 后还回去
     free_list = start_buffer;
     free_list->b_prev_free = h;                     ///< 双向循环链表
     h->b_next_free = free_list;
-    for (i=0;i<NR_HASH;i++)                         ///< 307
-        hash_table[i]=NULL;                         ///< 初始化 hash_table
-}    
+    for (i = 0; i < NR_HASH; i++)                   ///< NR_HASH = 307
+        hash_table[i] = NULL;                       ///< 初始化 hash_table
+}

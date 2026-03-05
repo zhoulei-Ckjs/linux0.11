@@ -318,6 +318,7 @@ static void read_inode(struct m_inode * inode)
 	unlock_inode(inode);
 }
 
+/* 将 inode 写入磁盘 */
 static void write_inode(struct m_inode * inode)
 {
 	struct super_block * sb;
@@ -332,15 +333,14 @@ static void write_inode(struct m_inode * inode)
 	}
 	if (!(sb = get_super(inode->i_dev)))    ///< 只有当设备被成功挂载后，内核的 super_block 数组中才会存在一个对应的条目
 		panic("trying to write inode without device");
-	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks +
-		(inode->i_num - 1) / INODES_PER_BLOCK;
-	if (!(bh=bread(inode->i_dev,block)))
+	/// 计算当前 inode 所在磁盘位置。
+	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks + (inode->i_num - 1) / INODES_PER_BLOCK;
+	if (!(bh = bread(inode->i_dev, block)))
 		panic("unable to read i-node block");
-	((struct d_inode *)bh->b_data)
-		[(inode->i_num-1)%INODES_PER_BLOCK] =
-			*(struct d_inode *)inode;
-	bh->b_dirt=1;
-	inode->i_dirt=0;
+	/// 同步 inode 到磁盘
+	((struct d_inode *)bh->b_data)[(inode->i_num - 1) % INODES_PER_BLOCK] = *(struct d_inode *)inode;
+	bh->b_dirt = 1;
+	inode->i_dirt = 0;
 	brelse(bh);
 	unlock_inode(inode);
 }
