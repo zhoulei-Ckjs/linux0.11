@@ -24,7 +24,7 @@
 #define ERR_STAT	0x01
 #define INDEX_STAT	0x02
 #define ECC_STAT	0x04        /* Corrected error */
-#define DRQ_STAT	0x08
+#define DRQ_STAT	0x08		/* bit3，如果该位为 1，表示硬盘已经准备好传输数据了 */
 #define SEEK_STAT	0x10
 #define WRERR_STAT	0x20
 #define READY_STAT	0x40

@@ -25,19 +25,21 @@ struct request request[NR_REQUEST];                ///< IO请求
  */
 struct task_struct * wait_for_request = NULL;
 
-/* blk_dev_struct is:
- *    do_request-address
- *    next-request
+/* 磁盘请求数组，两部分组成：
+ *  do_request-address
+ *  next-request
  */
-struct blk_dev_struct blk_dev[NR_BLK_DEV] = {
+struct blk_dev_struct blk_dev[NR_BLK_DEV] = 
+{
     { NULL, NULL },        /* no_dev */
     { NULL, NULL },        /* dev mem */
     { NULL, NULL },        /* 软盘 fd (floopy disk) */
-    { NULL, NULL },        /* 硬盘 hd (hard disk) */
+    { NULL, NULL },        /* 硬盘 hd (hard disk)，do_hd_request */
     { NULL, NULL },        /* dev ttyx */
     { NULL, NULL },        /* dev tty */
-    { NULL, NULL }        /* dev lp */
+    { NULL, NULL }         /* dev lp */
 };
+
 /* 锁定 buffer，多进程只有一个能锁定成功，其他进程会等待在 b_wait 上。*/
 static inline void lock_buffer(struct buffer_head * bh)
 {
@@ -56,10 +58,8 @@ static inline void unlock_buffer(struct buffer_head * bh)
     wake_up(&bh->b_wait);
 }
 
-/*
- * add-request adds a request to the linked list.
- * It disables interrupts so that it can muck with the
- * request-lists in peace.
+/**
+ * @brief 将硬盘请求加入到队列
  */
 static void add_request(struct blk_dev_struct * dev, struct request * req)
 {
@@ -67,25 +67,28 @@ static void add_request(struct blk_dev_struct * dev, struct request * req)
 
     req->next = NULL;
     cli();
-    if (req->bh)                            ///< buffer_head不空
+    if (req->bh)                            ///< buffer_head 不空
         req->bh->b_dirt = 0;
-    if (!(tmp = dev->current_request)) {    ///< 如果没有请求，设置请求为当前请求
+    if (!(tmp = dev->current_request))      ///< 如果没有请求，设置请求为当前请求
+    {
         dev->current_request = req;
         sti();
-        (dev->request_fn)();                ///< 进行硬盘初始化（重置硬盘控制器，重设硬盘参数）。
+        (dev->request_fn)();                ///< 进行硬盘初始化（重置硬盘控制器，重设硬盘参数）do_hd_request。
         return;
     }
-    for ( ; tmp->next ; tmp=tmp->next)
-        if ((IN_ORDER(tmp,req) ||
-            !IN_ORDER(tmp,tmp->next)) &&
-            IN_ORDER(req,tmp->next))
+
+    /// 如果队列不为空，则将当前请求按照 IN_ORDER 排序加入 blk_dev 磁盘请求队列。
+    for ( ; tmp->next ; tmp = tmp->next)
+        if ((IN_ORDER(tmp, req) || !IN_ORDER(tmp, tmp->next)) && IN_ORDER(req, tmp->next))
             break;
     req->next=tmp->next;
     tmp->next=req;
     sti();
 }
 
-/* 将请求加入到 blk_dev 的请求队列中，major 为硬盘主设备号（0x0300 的主设备号为 3） */
+/**
+ * @brief 将请求加入到 blk_dev 的请求队列中，major 为硬盘主设备号（0x0300 的主设备号为 3）
+ */
 static void make_request(int major,int rw, struct buffer_head * bh)        ///< major = 0b0011，rw = READ，bh 为空闲链表头
 {
     struct request * req;
@@ -101,12 +104,18 @@ static void make_request(int major,int rw, struct buffer_head * bh)        ///< 
             rw = READ;
         else
             rw = WRITE;
-    }   /* 走下来的话分两种情况，1.不是预读写；2.预读写但是内存块没有被锁定。 */
-    if (rw!=READ && rw!=WRITE)
+    }
+
+    /* 
+       走下来的话分两种情况：
+       1.不是预读写；
+       2.预读写但是内存块没有被锁定。
+    */
+    if (rw != READ && rw != WRITE)
         panic("Bad block dev command, must be R/W/RA/WA");
     lock_buffer(bh);
 
-    /// 如果是读请求，判断内存中的磁盘块是否是最新的，如果是最新的，直接返回
+    /// 如果是读/写请求，判断内存中的磁盘块是否是最新的，如果是最新的，直接返回
     if ((rw == WRITE && !bh->b_dirt) || (rw == READ && bh->b_uptodate)) 
     {        
         unlock_buffer(bh);
@@ -121,10 +130,10 @@ repeat:
     if (rw == READ)
         req = request + NR_REQUEST;            ///< NR_REQUEST = 32
     else
-        req = request+((NR_REQUEST*2) / 3);
+        req = request + ((NR_REQUEST * 2) / 3);///< 从 request 的 2/3 处开始。
 /* find an empty request */
     while (--req >= request)
-        if (req->dev<0)                        ///< 找到了设备
+        if (req->dev < 0)                        ///< 找到了一个空闲请求的位置
             break;
 /* if none found, sleep on new requests: check for rw_ahead */
     if (req < request)  ///< 当前请求已经满了（超过 request 数组的大小了）
@@ -149,7 +158,10 @@ repeat:
     req->next = NULL;
     add_request(major + blk_dev, req);          ///< 将当前读写请求加入队列，major = 0b0011
 }
-/* 将请求加入到队列中 */
+
+/**
+ * @brief 将请求加入到队列中
+ */
 void ll_rw_block(int rw, struct buffer_head * bh)
 {
     unsigned int major;
@@ -159,7 +171,7 @@ void ll_rw_block(int rw, struct buffer_head * bh)
         printk("Trying to read nonexistent block-device\n\r");
         return;
     }
-    make_request(major, rw, bh);                                    ///< 将请求加入 blk_dev 请求队列中。major = 0b0011，rw = READ，bh 为空闲链表头
+    make_request(major, rw, bh); ///< 将请求加入 blk_dev 请求队列中。major = 0b0011，rw = READ/WRITE，bh 为空闲链表头
 }
 
 void blk_dev_init(void)

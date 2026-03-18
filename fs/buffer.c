@@ -57,7 +57,7 @@ int sys_sync(void)
     return 0;
 }
 
-int sync_dev(int dev)
+int sync_dev(int dev)       ///< 如：dev = 0x306
 {
     int i;
     struct buffer_head * bh;
@@ -67,9 +67,9 @@ int sync_dev(int dev)
     {
         if (bh->b_dev != dev)
             continue;
-        wait_on_buffer(bh);
-        if (bh->b_dev == dev && bh->b_dirt)
-            ll_rw_block(WRITE,bh);
+        wait_on_buffer(bh);                 ///< 等待未锁定
+        if (bh->b_dev == dev && bh->b_dirt) ///< 数据为脏
+            ll_rw_block(WRITE, bh);
     }
     sync_inodes();
     bh = start_buffer;

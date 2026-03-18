@@ -13,18 +13,16 @@
  * long pauses in reading when heavy writing/syncing is going on)
  */
 #define NR_REQUEST	32
+
 /*
- *
- * Ok, this is an expanded form so that we can use the same
- * request for paging requests when that is implemented. In
- * paging, 'bh' is NULL, and 'waiting' is used to wait for
- * read/write completion.
+ * 磁盘请求结构体
  */
-struct request {
+struct request 
+{
 	int dev;						///< 设备号，-1表示无设备
 	int cmd;						///< READ 或 WRITE
 	int errors;
-	unsigned long sector;			///< 起始扇区号
+	unsigned long sector;			///< 要读写位置的扇区号，相对于该分区起始位置的逻辑扇区号
 	unsigned long nr_sectors;		///< 要读写的扇区数
 	char * buffer;					///< buffer_head 指向的内存。
 	struct task_struct * waiting;	///< 当前发起 IO 请求的进程
@@ -33,14 +31,14 @@ struct request {
 };
 
 /*
- * This is used in the elevator algorithm: Note that
- * reads always go before writes. This is natural: reads
- * are much more time-critical than writes.
+ * 优先级排序（<）：
+ * 1.比较 cmd
+ * 2.若 cmd 相等，则比较 dev
+ * 3.若 dev 相等，则比较 sector
  */
-#define IN_ORDER(s1,s2) \
-((s1)->cmd<(s2)->cmd || (s1)->cmd==(s2)->cmd && \
-((s1)->dev < (s2)->dev || ((s1)->dev == (s2)->dev && \
-(s1)->sector < (s2)->sector)))
+#define IN_ORDER(s1, s2) \
+(  (s1)->cmd < (s2)->cmd || (s1)->cmd==(s2)->cmd && \
+( (s1)->dev<(s2)->dev || ((s1)->dev==(s2)->dev && (s1)->sector<(s2)->sector) )  )
 
 struct blk_dev_struct {
 	void (*request_fn)(void);				///< 请求处理函数指针
@@ -105,15 +103,22 @@ extern inline void unlock_buffer(struct buffer_head * bh)
 	bh->b_lock=0;
 	wake_up(&bh->b_wait);                       ///< 唤醒等待在此内存块的进程
 }
-/* 更新磁盘处理结果，删除磁盘 IO 队列头的请求（因为这个就是处理第一个 IO 请求的结果），即内存是否映射了磁盘块，并唤醒等待 buffer 的进程 */
-extern inline void end_request(int uptodate)	///< uptodate = 0
+
+/**
+ * @brief 处理结束请求。
+ * 更新磁盘处理结果，删除磁盘 IO 队列头的请求（因为这个就是处理第一个 IO 请求的结果），即内存是否映射了磁盘块，
+ * 并唤醒等待 buffer 的进程。
+ */
+extern inline void end_request(int uptodate)
 {
 	DEVICE_OFF(CURRENT->dev);					///< hard disk : do nothing
-	if (CURRENT->bh) {
+	if (CURRENT->bh)
+	{
 		CURRENT->bh->b_uptodate = uptodate;		///< 更新磁盘块是否是最新的
 		unlock_buffer(CURRENT->bh);             ///< 唤醒等待此 buffer 的进程，即使没有读取到磁盘也唤醒，问题让用户进程去处理
 	}
-	if (!uptodate) {
+	if (!uptodate) 
+	{
 		printk(DEVICE_NAME " I/O error\n\r");   ///< 打印错误日志
 		printk("dev %04x, block %d\n\r",CURRENT->dev,
 			CURRENT->bh->b_blocknr);
@@ -123,6 +128,7 @@ extern inline void end_request(int uptodate)	///< uptodate = 0
 	CURRENT->dev = -1;              ///< 将请求的设备置空
 	CURRENT = CURRENT->next;        ///< 切换到下一个请求
 }
+
 /* 对 IO 队列进行初步校验。1.无 IO 请求则 return；2.主设备号检测；3.锁定检测。 */
 #define INIT_REQUEST \
 repeat: \
