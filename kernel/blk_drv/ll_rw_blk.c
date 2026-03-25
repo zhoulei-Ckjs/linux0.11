@@ -125,15 +125,15 @@ static void make_request(int major,int rw, struct buffer_head * bh)        ///< 
 repeat:
 /* we don't allow the write-requests to fill up the queue completely:
  * we want some room for reads: they take precedence. The last third            ///< 前 2/3 作为写请求
- * of the requests are only for reads.        ///< 后 1/3 作为读请求
+ * of the requests are only for reads.          ///< 后 1/3 作为读请求
  */
     if (rw == READ)
-        req = request + NR_REQUEST;            ///< NR_REQUEST = 32
+        req = request + NR_REQUEST;             ///< NR_REQUEST = 32
     else
-        req = request + ((NR_REQUEST * 2) / 3);///< 从 request 的 2/3 处开始。
+        req = request + ((NR_REQUEST * 2) / 3); ///< 从 request 的 2/3 处开始。
 /* find an empty request */
     while (--req >= request)
-        if (req->dev < 0)                        ///< 找到了一个空闲请求的位置
+        if (req->dev < 0)                       ///< 找到了一个空闲请求的位置
             break;
 /* if none found, sleep on new requests: check for rw_ahead */
     if (req < request)  ///< 当前请求已经满了（超过 request 数组的大小了）

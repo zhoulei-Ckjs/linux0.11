@@ -270,10 +270,12 @@ static void bad_rw_intr(void)
     if (CURRENT->errors > MAX_ERRORS/2)     ///< 如果错误数过多，重置磁盘。
         reset = 1;
 }
+
 /* 读取硬盘到映射的相应的缓冲区中，对blk_dev[hd]内部积攒的请求进行连续处理 */
 static void read_intr(void)
 {
-    if (win_result()) {     ///< 获取硬盘处理结果
+    if (win_result()) 
+    {     ///< 获取硬盘处理结果
         bad_rw_intr();
         do_hd_request();    ///< 如果读盘出错，则重置硬盘，重新校准
         return;
@@ -282,7 +284,8 @@ static void read_intr(void)
     CURRENT->errors = 0;
     CURRENT->buffer += 512;
     CURRENT->sector++;
-    if (--CURRENT->nr_sectors) {
+    if (--CURRENT->nr_sectors) 
+    {
         do_hd = &read_intr; ///< 如果要读取的扇区个数不为 0，则继续读取。（硬盘控制器在读取完一个扇区后，会自动准备下一个扇区，并再次触发 IRQ14。）
         return;
     }

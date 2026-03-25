@@ -18,6 +18,9 @@ struct m_inode inode_table[NR_INODE]={{0,},};
 static void read_inode(struct m_inode * inode);
 static void write_inode(struct m_inode * inode);
 
+/**
+ * @brief 等待 inode 解除锁定。
+ */
 static inline void wait_on_inode(struct m_inode * inode)
 {
 	cli();
@@ -59,16 +62,20 @@ void invalidate_inodes(int dev)
 	}
 }
 
+/**
+ * @brief 同步所有 inode 到磁盘。
+ */
 void sync_inodes(void)
 {
 	int i;
 	struct m_inode * inode;
 
-	inode = 0+inode_table;
-	for(i=0 ; i<NR_INODE ; i++,inode++) {
-		wait_on_inode(inode);
-		if (inode->i_dirt && !inode->i_pipe)
-			write_inode(inode);
+	inode = 0 + inode_table;
+	for(i = 0; i < NR_INODE; i++,inode++) 
+	{
+		wait_on_inode(inode);					///< 等待 inode 解除锁定
+		if (inode->i_dirt && !inode->i_pipe)    ///< 管道是个临时内存文件，不需要回写磁盘。
+			write_inode(inode);                 ///< 将 inode 写回磁盘。
 	}
 }
 
@@ -194,6 +201,11 @@ repeat:
 	return;
 }
 
+/**
+ * @brief 获取空闲 inode
+ * @details 从 inode 列表 inode_table 中寻找无人使用的 inode，即寻找 inode->i_count = 0
+ * 重置这个 inode，将引用计数 inode->i_count = 1
+ */
 struct m_inode * get_empty_inode(void)
 {
 	struct m_inode * inode;
@@ -220,14 +232,19 @@ struct m_inode * get_empty_inode(void)
 				printk("%04x: %6d\t",inode_table[i].i_dev, inode_table[i].i_num);
 			panic("No free inodes in mem");
 		}
+		/* 
+		走到这里分两种情况：
+            1.找到了空闲的 inode，i_count=0，非脏且非锁定。
+            2.可能没有空闲的 inode 了，找到的 inode 就可能是 dirty 和 lock 的，这时候就需要同步 inode 到磁盘。
+		*/
 		wait_on_inode(inode);    ///< 等待 inode 解锁。
 		while (inode->i_dirt)    ///< 同步 inode。
 		{
-			write_inode(inode);
-			wait_on_inode(inode);
+			write_inode(inode);  ///< 同步到磁盘的内存缓存 buffer_head 中。
+			wait_on_inode(inode);///< 等待 inode 解除锁
 		}
 	} while (inode->i_count);
-	memset(inode,0,sizeof(*inode));
+	memset(inode, 0, sizeof(*inode));
 	inode->i_count = 1;
 	return inode;
 }
@@ -254,26 +271,38 @@ struct m_inode * iget(int dev, int nr)    ///< dev = 0x306, nr = 1
 
 	if (!dev)
 		panic("iget with dev==0");
-	empty = get_empty_inode();
+	empty = get_empty_inode();            ///< 获取一个空闲 inode 存入 empty。
 	inode = inode_table;
-	while (inode < NR_INODE+inode_table) {
-		if (inode->i_dev != dev || inode->i_num != nr) {
+	while (inode < NR_INODE + inode_table)
+	{
+		if (inode->i_dev != dev || inode->i_num != nr) 
+		{
 			inode++;
 			continue;
 		}
-		wait_on_inode(inode);
-		if (inode->i_dev != dev || inode->i_num != nr) {
+		wait_on_inode(inode);    ///< 等待 inode 解除锁定，如果锁定则进入睡眠，
+		                         /// 等待 inode 使用者来唤醒自己，这个时候就是当前进程独占这个 inode，其他进程还睡眠在这个 inode 上。
+		/* 
+		为什么要再次检查？因为在你调用 wait_on_inode 等待它解锁的这段时间里，另一个进程可能已经修改了它。
+		这里确保拿到的是这个 inode 无误。
+		*/
+		if (inode->i_dev != dev || inode->i_num != nr) 
+		{
 			inode = inode_table;
 			continue;
 		}
-		inode->i_count++;
-		if (inode->i_mount) {
+		inode->i_count++;        ///< 增加引用计数。
+
+		/// 这个目录是一个文件系统挂载点，如 /mnt 挂载了一块 U 盘。
+		if (inode->i_mount) 
+		{
 			int i;
 
-			for (i = 0 ; i<NR_SUPER ; i++)
-				if (super_block[i].s_imount==inode)
+			for (i = 0 ; i < NR_SUPER ; i++)
+				if (super_block[i].s_imount == inode)
 					break;
-			if (i >= NR_SUPER) {
+			if (i >= NR_SUPER) 
+			{
 				printk("Mounted inode hasn't got sb\n");
 				if (empty)
 					iput(empty);
@@ -318,28 +347,35 @@ static void read_inode(struct m_inode * inode)
 	unlock_inode(inode);
 }
 
-/* 将 inode 写入磁盘 */
+/**
+ * @brief 将 inode 写入磁盘
+ * @details 首先要求 inode 为脏且设备存在，然后计算 inode 在磁盘中的位置获取对应的 buffer_head，
+ * 将 buffer_head 标记为脏，由下次 getblk 触发磁盘同步，同步整个 buffer_head。
+ */
 static void write_inode(struct m_inode * inode)
 {
 	struct super_block * sb;
 	struct buffer_head * bh;
 	int block;
 
-	lock_inode(inode);
-	if (!inode->i_dirt || !inode->i_dev) 
+	lock_inode(inode);    ///< 加锁
+	if (!inode->i_dirt || !inode->i_dev)    ///< 如果不为脏 或 设备不存在，则直接返回。
 	{
 		unlock_inode(inode);
 		return;
 	}
 	if (!(sb = get_super(inode->i_dev)))    ///< 只有当设备被成功挂载后，内核的 super_block 数组中才会存在一个对应的条目
 		panic("trying to write inode without device");
-	/// 计算当前 inode 所在磁盘位置。
+	/// 计算当前 inode 所在磁盘位置，每个 block 占用 1K。
 	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks + (inode->i_num - 1) / INODES_PER_BLOCK;
+
+	/// 一个磁盘块中存储了很多 inode，所以需要先将 inode 读取出来再将对应的 inode 更新。
 	if (!(bh = bread(inode->i_dev, block)))
 		panic("unable to read i-node block");
-	/// 同步 inode 到磁盘
-	((struct d_inode *)bh->b_data)[(inode->i_num - 1) % INODES_PER_BLOCK] = *(struct d_inode *)inode;
-	bh->b_dirt = 1;
+
+	/// 同步 inode 到磁盘的内存映射 buffer_head 中。
+	((struct d_inode *)bh->b_data)[(inode->i_num - 1) % INODES_PER_BLOCK] = *(struct d_inode *)inode;  ///< 转换为磁盘 inode 然后写入。
+	bh->b_dirt = 1;     ///< 标记为脏，下次再分配即调用 getblk 时会同步磁盘。
 	inode->i_dirt = 0;
 	brelse(bh);
 	unlock_inode(inode);

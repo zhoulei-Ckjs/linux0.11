@@ -95,6 +95,7 @@ extern struct task_struct * wait_for_request;
 void (*DEVICE_INTR)(void) = NULL;
 #endif
 static void (DEVICE_REQUEST)(void);
+
 /* 去除锁标志，并唤醒等待在此内存的进程 */
 extern inline void unlock_buffer(struct buffer_head * bh)
 {
@@ -107,7 +108,7 @@ extern inline void unlock_buffer(struct buffer_head * bh)
 /**
  * @brief 处理结束请求。
  * 更新磁盘处理结果，删除磁盘 IO 队列头的请求（因为这个就是处理第一个 IO 请求的结果），即内存是否映射了磁盘块，
- * 并唤醒等待 buffer 的进程。
+ * 解锁buffer_head，唤醒等待 buffer 的进程。
  */
 extern inline void end_request(int uptodate)
 {
@@ -115,7 +116,7 @@ extern inline void end_request(int uptodate)
 	if (CURRENT->bh)
 	{
 		CURRENT->bh->b_uptodate = uptodate;		///< 更新磁盘块是否是最新的
-		unlock_buffer(CURRENT->bh);             ///< 唤醒等待此 buffer 的进程，即使没有读取到磁盘也唤醒，问题让用户进程去处理
+		unlock_buffer(CURRENT->bh);             ///< 解锁buffer_head，唤醒等待此 buffer 的进程，即使没有读取到磁盘也唤醒，问题让用户进程去处理
 	}
 	if (!uptodate) 
 	{

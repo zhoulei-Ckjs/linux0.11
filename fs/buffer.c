@@ -57,6 +57,9 @@ int sys_sync(void)
     return 0;
 }
 
+/**
+ * @brief 完成磁盘同步
+ */
 int sync_dev(int dev)       ///< 如：dev = 0x306
 {
     int i;
@@ -71,8 +74,11 @@ int sync_dev(int dev)       ///< 如：dev = 0x306
         if (bh->b_dev == dev && bh->b_dirt) ///< 数据为脏
             ll_rw_block(WRITE, bh);
     }
-    sync_inodes();
+    sync_inodes();                          ///< 同步所有 inode 到磁盘。
     bh = start_buffer;
+
+    /// 上面的 for 循环会将所有的 bh 都锁定，这个 for 循环会等待所有 bh 解锁（在硬盘完成同步 buffer_head 后会解锁）
+    /// 所以下面这个 for 循环走完才算完成同步。
     for (i=0 ; i < NR_BUFFERS ; i++, bh++) 
     {
         if (bh->b_dev != dev)
@@ -183,14 +189,8 @@ static struct buffer_head * find_buffer(int dev, int block)
     return NULL;
 }
 
-/*
- * 获取到对应设备 dev 的对应块 block 对应的内存映射 buffer_head。
- * 未找到则返回 NULL。
- * Why like this, I hear you say... The reason is race-conditions.
- * As we don't lock buffers (unless we are reading them, that is),
- * something might happen to it while we sleep (ie a read-error
- * will force it bad). This shouldn't really happen currently, but
- * the code is ready.
+/**
+ * @brief 获取到对应设备 dev 的对应块 block 对应的内存映射 buffer_head 并增加引用计数。 未找到则返回 NULL。
  */
 struct buffer_head * get_hash_table(int dev, int block)
 {
@@ -200,7 +200,7 @@ struct buffer_head * get_hash_table(int dev, int block)
     {
         if (!(bh = find_buffer(dev, block)))
             return NULL;
-        bh->b_count++;
+        bh->b_count++;    ///< 增加引用计数
         wait_on_buffer(bh);
         if (bh->b_dev == dev && bh->b_blocknr == block)
             return bh;
@@ -208,12 +208,10 @@ struct buffer_head * get_hash_table(int dev, int block)
     }
 }
 
-/*
- * Ok, this is getblk, and it isn't very clear, again to hinder                获取一个空闲链表头，如果当前块在 hash_table 里，则直接返回这个块
- * race-conditions. Most of the code is seldom used, (ie repeating),
- * so it should be much more efficient than it looks.
- *
- * The algoritm is changed: hopefully better, and an elusive bug removed.
+/**
+ * @ brief 获取一个空闲链表头，如果当前块在 hash_table 里，则直接返回这个块；
+ * 如果不在 hash_table 里，从空闲链表里找到一块，如果这个块被占用，则同步磁盘进行释放。
+ * 将这个块插入 hash_table。
  */
 #define BADNESS(bh) (((bh)->b_dirt<<1)+(bh)->b_lock)
 struct buffer_head * getblk(int dev,int block)
@@ -255,9 +253,9 @@ repeat:
         goto repeat;
 
     /// 走到这里，说明找到一块没人用的内存块，如果当前块为脏，则需要写入磁盘
-    while (bh->b_dirt) 
+    while (bh->b_dirt)
     {
-        sync_dev(bh->b_dev);
+        sync_dev(bh->b_dev);    ///< 完成磁盘同步之后会解锁 bh。
         wait_on_buffer(bh);
         if (bh->b_count)
             goto repeat;
@@ -269,13 +267,13 @@ repeat:
         goto repeat;
 /* OK, FINALLY we know that this buffer is the only one of it's kind, */
 /* and that it's unused (b_count=0), unlocked (b_lock=0), and clean */
-    bh->b_count=1;
-    bh->b_dirt=0;
+    bh->b_count = 1;
+    bh->b_dirt = 0;
     bh->b_uptodate=0;                           ///< 并不是磁盘中最新的
-    remove_from_queues(bh);                     ///< 将内存块移出hash表和free_list
+    remove_from_queues(bh);                     ///< 将内存块移出 hash 表和 free_list。
     bh->b_dev = dev;
     bh->b_blocknr = block;
-    insert_into_queues(bh);
+    insert_into_queues(bh);                     ///< 放入尾部。
     return bh;
 }
 
@@ -285,10 +283,11 @@ void brelse(struct buffer_head * buf)
     if (!buf)                       ///< 如果缓冲区为空，则直接返回。
         return;
     wait_on_buffer(buf);            ///< 等待缓冲区没有被锁定
-    if (!(buf->b_count--))
+    if (!(buf->b_count--))          ///< 减少使用标记
         panic("Trying to free free buffer");    ///< 逻辑错误，缓冲区已被释放
     wake_up(&buffer_wait);          ///< 这个队列中是拿不到缓冲区的队列，那我这里既然要释放该缓冲区了，说明这个缓冲区可以给别人用了，所以这里唤醒等获取缓冲区的进程。
 }
+
 /*
  * bread() 读取一个特定的块到缓冲区中并且返回这个缓冲区
  * 会等待读取完成，读取块大小为 512 * 2 = 1K。
