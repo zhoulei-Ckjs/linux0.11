@@ -129,7 +129,10 @@ struct file {
     off_t f_pos;                ///< 当前文件位置，偏移量
 };
 
-struct super_block 
+/**
+ * @brief 文件系统超级块
+ */
+struct super_block
 {
     unsigned short s_ninodes;          ///< inode 总数。
     unsigned short s_nzones;           ///< 磁盘总块数（1块 = 1KB）。
@@ -144,7 +147,8 @@ struct super_block
     struct buffer_head * s_zmap[8];    ///< 数据块位图在内存中的缓冲
     unsigned short s_dev;              ///< 该超级块对应的设备号（0x0301=/dev/hda1）
     struct m_inode * s_isup;           ///< 指向根目录的 inode（/目录）
-    struct m_inode * s_imount;         ///< 如果该文件系统被 mount 到某个目录，指向该目录的 inode。
+    struct m_inode * s_imount;         ///< 如果该文件系统（如 U 盘）被 mount 到某个目录，指向该目录的 inode。
+                                       ///< 超级块也会增加 inode 的一个引用计数，致使 s_imount 的 inode 永远不会被释放。
     unsigned long s_time;              ///< 最后一次修改时间
     struct task_struct * s_wait;       ///< 等待该超级块的进程队列
     unsigned char s_lock;              ///< 锁定标志，防止并发修改

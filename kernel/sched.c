@@ -90,16 +90,10 @@ void math_state_restore()
         current->used_math=1;
     }
 }
-/*
- *
- * 进行进程切换。
- * 检测闹钟和其他信号。
- * 选择时间片最多的进程进行切换（都没有时间片则依照优先级进行重新分配时间片）
- * 
- *
- *   NOTE!!  Task 0 is the 'idle' task, which gets called when no other
- * tasks can run. It can not be killed, and it cannot sleep. The 'state'
- * information in task[0] is never used.
+
+/**
+ * @brief 进行进程切换。
+ * @details 检测闹钟和其他信号，选择时间片最多的进程进行切换（都没有时间片则依照优先级进行重新分配时间片）。
  */
 void schedule(void)
 {
@@ -147,7 +141,11 @@ int sys_pause(void)
     schedule();
     return 0;
 }
-/* 睡眠到这个信号上，将 CPU 交给其他进程，自己变成 TASK_UNINTERRUPTIBLE */
+
+/**
+ * @brief 睡眠，让出 CPU。
+ * @details 睡眠到这个信号上，将 CPU 交给其他进程，自己变成 TASK_UNINTERRUPTIBLE
+ */
 void sleep_on(struct task_struct **p)
 {
     struct task_struct *tmp;
@@ -157,8 +155,8 @@ void sleep_on(struct task_struct **p)
     if (current == &(init_task.task))
         panic("task[0] trying to sleep");
     tmp = *p;                               ///< tmp 存储了旧的 *p
-    *p = current;							///< 将当前进程加入到等待队列 p，*p 存储了自己。
-    current->state = TASK_UNINTERRUPTIBLE;	///< 当前进程不可中断的状态，将自己阻塞，让其他进程去争抢时间片。
+    *p = current;                           ///< 将当前进程加入到等待队列 p，*p 存储了自己。
+    current->state = TASK_UNINTERRUPTIBLE;  ///< 当前进程不可中断的状态，将自己阻塞，让其他进程去争抢时间片。
     schedule();
     if (tmp)                                ///< 时间片轮转到此进程时，继续在此处执行。
         tmp->state = 0;                     ///< 激活自己的上一个等待进程，让上一个进程去争抢轮询时间片。
@@ -174,7 +172,7 @@ void interruptible_sleep_on(struct task_struct **p)
         panic("task[0] trying to sleep");
     tmp=*p;
     *p=current;
-repeat:	current->state = TASK_INTERRUPTIBLE;
+repeat:    current->state = TASK_INTERRUPTIBLE;
     schedule();
     if (*p && *p != current) {
         (**p).state=0;
@@ -184,12 +182,15 @@ repeat:	current->state = TASK_INTERRUPTIBLE;
     if (tmp)
         tmp->state=0;
 }
+
 /* 唤醒等待进程，让进程可以争抢时间片 */
 void wake_up(struct task_struct **p)
 {
-    if (p && *p) {
-        (**p).state=0;  ///< 更新当前进程的状态，0 为 TASK_RUNNING，可以争抢时间片了
-        *p=NULL;        ///< 将队列头置空，因为队列头变为 TASK_RUNNING 后会激活队列头的下一个等待进程。下一个等待进程进入调度后也是如此，因此就激活了所有的等待进程，详见 sleep_on 函数。
+    if (p && *p) 
+    {
+        (**p).state = 0;///< 更新当前进程的状态，0 为 TASK_RUNNING，可以争抢时间片了
+        *p = NULL;      ///< 将队列头置空，因为队列头变为 TASK_RUNNING 后会激活队列头的下一个等待进程。
+                        ///< 下一个等待进程进入调度后也是如此，因此就激活了所有的等待进程，详见 sleep_on 函数。
     }
 }
 
@@ -210,8 +211,8 @@ int ticks_to_floppy_on(unsigned int nr)
 
     if (nr>3)
         panic("floppy_on: nr>3");
-    moff_timer[nr]=10000;		/* 100 s = very big :-) */
-    cli();				/* use floppy_off to turn it off */
+    moff_timer[nr]=10000;        /* 100 s = very big :-) */
+    cli();                /* use floppy_off to turn it off */
     mask |= current_DOR;
     if (!selected) {
         mask &= 0xFC;
@@ -403,9 +404,9 @@ void sched_init(void)
     __asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
     ltr(0);
     lldt(0);
-    outb_p(0x36,0x43);		/* binary, mode 3, LSB/MSB, ch 0 */
-    outb_p(LATCH & 0xff , 0x40);	/* LSB */
-    outb(LATCH >> 8 , 0x40);	/* MSB */
+    outb_p(0x36,0x43);        /* binary, mode 3, LSB/MSB, ch 0 */
+    outb_p(LATCH & 0xff , 0x40);    /* LSB */
+    outb(LATCH >> 8 , 0x40);    /* MSB */
     set_intr_gate(0x20,&timer_interrupt);
     outb(inb_p(0x21)&~0x01,0x21);
     set_system_gate(0x80,&system_call);
