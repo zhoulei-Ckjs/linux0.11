@@ -170,7 +170,7 @@ void iput(struct m_inode * inode)
     if (inode->i_pipe)
     {
         wake_up(&inode->i_wait);
-        if (--inode->i_count)
+        if (--inode->i_count)       ///< 如果不是最后一个引用，则返回；如果是，则释放页面。
             return;
         free_page(inode->i_size);
         inode->i_count=0;

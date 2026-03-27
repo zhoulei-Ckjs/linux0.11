@@ -1,26 +1,10 @@
-;
-; SYS_SIZE is the number of clicks (16 bytes) to be loaded.
-; 0x3000 is 0x30000 bytes = 196kB, more than enough for current
-; versions of linux
-;
+;   bootsect.s		(C) 1991 Linus Torvalds
+; bootsect 由 bios 加载到 0x7c00, bootsect 将自己移动到 0x90000, 并且跳转到那里。
+; 然后它利用 bios 的中断将 setup 加载到 0x90200，将系统加载到 0x10000。
+
+; SYS_SIZE 是要加载的系统的大小，大小要 x16。
+; 0x3000 is 0x30000 bytes = 196kB, 足够存储当前的版本的 linux 了。
 SYSSIZE = 0x3000
-;
-;	bootsect.s		(C) 1991 Linus Torvalds
-;
-; bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
-; iself out of the way to address 0x90000, and jumps there.
-;
-; It then loads 'setup' directly after itself (0x90200), and the system
-; at 0x10000, using BIOS interrupts. 
-;
-; NOTE; currently system is at most 8*65536 bytes long. This should be no
-; problem, even in the future. I want to keep it simple. This 512 kB
-; kernel size should be enough, especially as this doesn't contain the
-; buffer cache as in minix
-;
-; The loader has been made as simple as possible, and continuos
-; read errors will result in a unbreakable loop. Reboot by hand. It
-; loads pretty fast by getting whole sectors at a time whenever possible.
 
 .globl begtext, begdata, begbss, endtext, enddata, endbss
 .text

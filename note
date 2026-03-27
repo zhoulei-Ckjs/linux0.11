@@ -1,6 +1,7 @@
 内存规划
- end(代码段、数据段以及bss段结尾)      4MB
---|--    free_list()，大小 1024*n     --|
+0x10000          end             1MB             memory_end
+   |    system    |               |                 |
+   |              |               |                 |
 
 硬盘结构
 |--              MBR              --|--                                                             分区1                                                                                    --|
