@@ -99,11 +99,12 @@ struct m_inode
 {
     unsigned short i_mode;          ///< 文件模式
     unsigned short i_uid;           ///< 文件所有者的用户标识符
-    unsigned long i_size;           ///< 文件大小
+    unsigned long i_size;           ///< 文件大小，也被用来存储管道缓冲区所在物理内存地址。
     unsigned long i_mtime;          ///< 文件内容最后一次被修改的时间戳
     unsigned char i_gid;            ///< 文件所属组的标识符
     unsigned char i_nlinks;
     unsigned short i_zone[9];       ///< 数据块指针，指向文件实际数据存储的物理块号，前7个直接指针，第8个为一级指针，第9个为二级指针。
+                                    ///< 如果是块设备，则 i_zone[0] 存储了设备号。
 
     /* 下面这些属性是内存 inode 独有的，内存 inode 继承了磁盘 inode */
     struct task_struct * i_wait;    ///< 等待该文件的进程队列。

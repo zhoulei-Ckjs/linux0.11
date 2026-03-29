@@ -59,6 +59,7 @@ int sys_sync(void)
 
 /**
  * @brief 完成磁盘同步
+ * @details 将磁盘的对应内存缓存 以及 块的所有 inode 落盘。
  */
 int sync_dev(int dev)       ///< 如：dev = 0x306
 {
@@ -74,10 +75,11 @@ int sync_dev(int dev)       ///< 如：dev = 0x306
         if (bh->b_dev == dev && bh->b_dirt) ///< 数据为脏
             ll_rw_block(WRITE, bh);
     }
-    sync_inodes();                          ///< 同步所有 inode 到磁盘。
+    sync_inodes();                          ///< 同步所有 inode 到磁盘的对应内存缓存。
     bh = start_buffer;
 
-    /// 上面的 for 循环会将所有的 bh 都锁定，这个 for 循环会等待所有 bh 解锁（在硬盘完成同步 buffer_head 后会解锁）
+    /// 上面的 for 循环会将所有的 bh 都锁定，然后将设备的所有 inode 同步到磁盘，这个 for 循环会等待所有 bh 解锁（在硬盘完成同步 buffer_head 后会解锁）
+    /// 然后执行 同步 所有 inode 到磁盘的对应内存缓存，这时这个设备的磁盘的对应内存缓存需要重新落盘。
     /// 所以下面这个 for 循环走完才算完成同步。
     for (i=0 ; i < NR_BUFFERS ; i++, bh++) 
     {

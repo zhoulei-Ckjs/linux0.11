@@ -40,7 +40,7 @@ static inline volatile void oom(void)
 __asm__("movl %%eax,%%cr3"::"a" (0))
 
 /* these are not to be changed without changing head.s etc */
-#define LOW_MEM 0x100000
+#define LOW_MEM 0x100000    /* 内存分页起始于 1MB 处。*/
 #define PAGING_MEMORY (15*1024*1024)
 #define PAGING_PAGES (PAGING_MEMORY >> 12)
 #define MAP_NR(addr) (((addr)-LOW_MEM)>>12)
@@ -82,9 +82,8 @@ __asm__("std ; repne ; scasb\n\t"
 return __res;
 }
 
-/*
- * Free a page of memory at physical address 'addr'. Used by
- * 'free_page_tables()'
+/**
+ * @brief 释放物理内存页（1页=4096B）
  */
 void free_page(unsigned long addr)
 {
@@ -93,10 +92,10 @@ void free_page(unsigned long addr)
     if (addr >= HIGH_MEMORY)
         panic("trying to free nonexistent page");
     addr -= LOW_MEM;
-    addr >>= 12;
+    addr >>= 12;        ///< 4096B 为 1 页。
     if (mem_map[addr]--)
         return;
-    mem_map[addr]=0;
+    mem_map[addr] = 0;
     panic("trying to free free page");
 }
 

@@ -1,7 +1,9 @@
 内存规划
-0x10000          end             1MB             memory_end
-   |    system    |               |                 |
-   |              |               |                 |
+0x10000          end             1MB                               16MB   memory_end
+   |    system    |               |     内存分页（4096B为 1 页）    |          |
+   |              |               |                                 |          |
+memory_end:
+    1M + bios检测出内存大小。
 
 硬盘结构
 |--              MBR              --|--                                                             分区1                                                                                    --|

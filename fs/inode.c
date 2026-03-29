@@ -20,6 +20,7 @@ static void write_inode(struct m_inode * inode);
 
 /**
  * @brief 等待 inode 解除锁定。
+ * @notes 在读写 inode 时会加锁。
  */
 static inline void wait_on_inode(struct m_inode * inode)
 {
@@ -64,7 +65,7 @@ void invalidate_inodes(int dev)
 }
 
 /**
- * @brief 同步所有 inode 到磁盘。
+ * @brief 同步所有 inode 到磁盘的对应内存缓存。
  */
 void sync_inodes(void)
 {
@@ -76,7 +77,7 @@ void sync_inodes(void)
     {
         wait_on_inode(inode);                    ///< 等待 inode 解除锁定
         if (inode->i_dirt && !inode->i_pipe)    ///< 管道是个临时内存文件，不需要回写磁盘。
-            write_inode(inode);                 ///< 将 inode 写回磁盘。
+            write_inode(inode);                 ///< 将 inode 写入磁盘的对应内存缓存。
     }
 }
 
@@ -157,7 +158,8 @@ int create_block(struct m_inode * inode, int block)
 {
     return _bmap(inode,block,1);
 }
-        
+
+/// 如果是管道文件（只在内存中存在，不在磁盘中），则释放管道文件。
 void iput(struct m_inode * inode)
 {
     if (!inode)
@@ -172,24 +174,28 @@ void iput(struct m_inode * inode)
         wake_up(&inode->i_wait);
         if (--inode->i_count)       ///< 如果不是最后一个引用，则返回；如果是，则释放页面。
             return;
-        free_page(inode->i_size);
-        inode->i_count=0;
-        inode->i_dirt=0;
-        inode->i_pipe=0;
+        free_page(inode->i_size);   ///< 释放管道所占物理页面。
+        inode->i_count = 0;
+        inode->i_dirt = 0;
+        inode->i_pipe = 0;
         return;
     }
+
+    /// 防御性检查，什么情况下 inode->i_dev==0 ？有可能是块刚被分配，尚未初始化。
     if (!inode->i_dev)
     {
-        inode->i_count--;
+        inode->i_count--;           ///< 释放引用。
         return;
     }
+
+    /// 块设备文件处理（块设备文件，硬盘、软盘、光盘等可以随机访问的存储设备。），这是一块块设备（如/dev/hda1）而不是普通的文件或目录。
     if (S_ISBLK(inode->i_mode))
     {
-        sync_dev(inode->i_zone[0]);
-        wait_on_inode(inode);
+        sync_dev(inode->i_zone[0]); ///< 同步块设备文件。这里i_zone[0]不再指向数据块指针，而是设备号。
+        wait_on_inode(inode);       ///< 等待 inode 解除锁定（在读写 inode 时会加锁）。
     }
 repeat:
-    if (inode->i_count>1)
+    if (inode->i_count > 1)         ///< 减少引用
     {
         inode->i_count--;
         return;
@@ -358,7 +364,7 @@ static void read_inode(struct m_inode * inode)
 }
 
 /**
- * @brief 将 inode 写入磁盘
+ * @brief 将 inode 写入磁盘的对应内存缓存
  * @details 首先要求 inode 为脏且设备存在，然后计算 inode 在磁盘中的位置获取对应的 buffer_head，
  * 将 buffer_head 标记为脏，由下次 getblk 触发磁盘同步，同步整个 buffer_head。
  */
