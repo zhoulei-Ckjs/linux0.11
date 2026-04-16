@@ -56,7 +56,9 @@ static void wait_on_super(struct super_block * sb)
 	sti();
 }
 
-/* 获取超级块，当超级块不存在时返回空 */
+/**
+ * @brief 获取超级块，当超级块不存在时返回空。
+ */
 struct super_block * get_super(int dev)
 {
 	struct super_block * s;

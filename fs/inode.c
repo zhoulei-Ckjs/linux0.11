@@ -30,7 +30,10 @@ static inline void wait_on_inode(struct m_inode * inode)
     sti();
 }
 
-/* 等待 inode 解锁 */
+/**
+ * @brief 锁定 inode。
+ * @details 先等待 inode 解锁，然后再锁定该 inode。
+ */
 static inline void lock_inode(struct m_inode * inode)
 {
     cli();
@@ -159,7 +162,10 @@ int create_block(struct m_inode * inode, int block)
     return _bmap(inode,block,1);
 }
 
-/// 如果是管道文件（只在内存中存在，不在磁盘中），则释放管道文件。
+/**
+ * @brief inode put，即 inode 归还，将 inode 归还 inode_table，其他进程可以复用该 inode 了。
+ * @details 如果是管道文件（管道只在内存中存在，不在磁盘中），则释放管道文件；如果是块设备文件，则同步当前块设备的所有数据到磁盘。
+ */
 void iput(struct m_inode * inode)
 {
     if (!inode)
@@ -168,7 +174,7 @@ void iput(struct m_inode * inode)
     if (!inode->i_count)    ///< 引用为 0，已释放。
         panic("iput: trying to free free inode");
 
-    /// 文件为管道
+    /// 如果文件为管道，判断是否为最后一个管道引用，如果是，则释放管道所占的物理页面。
     if (inode->i_pipe)
     {
         wake_up(&inode->i_wait);
@@ -188,31 +194,34 @@ void iput(struct m_inode * inode)
         return;
     }
 
-    /// 块设备文件处理（块设备文件，硬盘、软盘、光盘等可以随机访问的存储设备。），这是一块块设备（如/dev/hda1）而不是普通的文件或目录。
+    /// 块设备文件处理（块设备文件，硬盘、软盘、光盘等可以随机访问的存储设备），这是一块块设备（如/dev/hda1）而不是普通的文件或目录，则同步当前块设备的所有内存磁盘和inode。
     if (S_ISBLK(inode->i_mode))
     {
         sync_dev(inode->i_zone[0]); ///< 同步块设备文件。这里i_zone[0]不再指向数据块指针，而是设备号。
         wait_on_inode(inode);       ///< 等待 inode 解除锁定（在读写 inode 时会加锁）。
     }
 repeat:
+    /// 这里是如果还有引用，直接减少就行，如果没有引用了，那么需要释放文件。
     if (inode->i_count > 1)         ///< 减少引用
     {
         inode->i_count--;
         return;
     }
+    /// 如果硬链接为 0，则释放该 inode 占用的内存。
     if (!inode->i_nlinks)
     {
         truncate(inode);
         free_inode(inode);
         return;
     }
-    if (inode->i_dirt)
+    /// 走到这里硬链接不为 0，同步 inode 到对应的内存磁盘。
+    if (inode->i_dirt)          ///< 如果为脏
     {
-        write_inode(inode);    /* we can sleep - so do again */
+        write_inode(inode);     ///< 写 inode 到内存磁盘。
         wait_on_inode(inode);
         goto repeat;
     }
-    inode->i_count--;
+    inode->i_count--;           ///< 减少自身引用，即释放 inode，其他进程可以复用这个 inode 了。
     return;
 }
 
@@ -280,7 +289,11 @@ struct m_inode * get_pipe_inode(void)
     return inode;
 }
 
-struct m_inode * iget(int dev, int nr)    ///< dev = 0x306, nr = 1
+/// inode get，inode 获取
+/// @param nr inode号。
+/// @details 先从 inode_table 中查看该 inode 是否已经在 inode_table 中了，如果不在，就获取一个空闲的 inode，并将该 inode 从磁盘中读取出来。
+/// 特殊情况，如果存在挂载点如 /mnt 挂载了一个 U 盘，则跳入新文件系统中。
+struct m_inode * iget(int dev, int nr)    ///< dev = 0x306, nr = 1，inode 号 1 固定是根目录。
 {
     struct m_inode * inode, * empty;
 
@@ -296,12 +309,11 @@ struct m_inode * iget(int dev, int nr)    ///< dev = 0x306, nr = 1
             continue;
         }
         wait_on_inode(inode);    ///< 等待 inode 解除锁定，如果锁定则进入睡眠，
-                                 /// 等待 inode 使用者来唤醒自己，这个时候就是当前进程独占这个 inode，其他进程还睡眠在这个 inode 上。
-        /* 
-        为什么要再次检查？因为在你调用 wait_on_inode 等待它解锁的这段时间里，另一个进程可能已经修改了它。
-        这里确保拿到的是这个 inode 无误。
-        */
-        if (inode->i_dev != dev || inode->i_num != nr) 
+                                 ///< 等待 inode 使用者来唤醒自己，这个时候就是当前进程独占这个 inode，其他进程还睡眠在这个 inode 上。
+
+        /// 为什么要再次检查？因为在调用 wait_on_inode 等待它解锁的这段时间里，另一个进程可能已经修改了它。
+        /// 这里确保拿到的是这个 inode 无误。
+        if (inode->i_dev != dev || inode->i_num != nr)
         {
             inode = inode_table;
             continue;
@@ -309,7 +321,7 @@ struct m_inode * iget(int dev, int nr)    ///< dev = 0x306, nr = 1
         inode->i_count++;        ///< 增加引用计数。
 
         /// 这个目录是一个文件系统挂载点，如 /mnt 挂载了一块 U 盘。
-        if (inode->i_mount) 
+        if (inode->i_mount)
         {
             int i;
 
@@ -317,29 +329,35 @@ struct m_inode * iget(int dev, int nr)    ///< dev = 0x306, nr = 1
             for (i = 0 ; i < NR_SUPER ; i++)
                 if (super_block[i].s_imount == inode)
                     break;
-            if (i >= NR_SUPER) 
+            if (i >= NR_SUPER)  ///< 如果没找到对应的超级块
             {
                 printk("Mounted inode hasn't got sb\n");
                 if (empty)
                     iput(empty);
                 return inode;
             }
-            iput(inode);
+            iput(inode);        ///< 释放 inode。
+            /// 既然是挂载点，就需要访问被挂载的文件系统。
+            /// 更新 dev 和 nr，跳入新文件系统。
             dev = super_block[i].s_dev;
             nr = ROOT_INO;
             inode = inode_table;
             continue;
         }
+        
+        /// 已经在 inode_table 中找到了 inode，就需要把之前申请的空闲 inode 释放。
         if (empty)
             iput(empty);
         return inode;
     }
-    if (!empty)
+
+    /// 走到这里就说明上面根据 dev 和 nr 没有找到 inode。
+    if (!empty)                 ///< 既没找到空闲 inode 也没在 inode_table 中找到目标 inode，直接返回 NULL。
         return (NULL);
-    inode=empty;
+    inode = empty;
     inode->i_dev = dev;
     inode->i_num = nr;
-    read_inode(inode);
+    read_inode(inode);          ///< 从磁盘中读取 inode。
     return inode;
 }
 
@@ -349,11 +367,11 @@ static void read_inode(struct m_inode * inode)
     struct buffer_head * bh;
     int block;
 
-    lock_inode(inode);
-    if (!(sb=get_super(inode->i_dev)))
+    lock_inode(inode);          ///< 锁定该 inode。
+    if (!(sb = get_super(inode->i_dev)))            ///< 获取超级块。
         panic("trying to read inode without dev");
     block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks +
-        (inode->i_num-1)/INODES_PER_BLOCK;
+        (inode->i_num - 1) / INODES_PER_BLOCK;
     if (!(bh=bread(inode->i_dev,block)))
         panic("unable to read i-node block");
     *(struct d_inode *)inode =

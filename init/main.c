@@ -59,20 +59,24 @@ extern long startup_time;
 #define DRIVE_INFO (*(struct drive_info *)0x90080)
 #define ORIG_ROOT_DEV (*(unsigned short *)0x901FC)      /* 这个位置存储了根设备号，硬盘为 0x306 */
 
-/*
- * Yeah, yeah, it's ugly, but I cannot find how to do this correctly
- * and this seems to work. I anybody has more info on the real-time
- * clock I'd be interested. Most of this was trial and error, and some
- * bios-listing reading. Urghh.
+/**
+ * @brief 从 cmos 中读取时间的相关信息。
  */
-
 #define CMOS_READ(addr) ({ \
-outb_p(0x80|addr,0x70); \
-inb_p(0x71); \
+outb_p(0x80 | addr, 0x70); /* 0x80 表示禁用 NMI。0x70 为 CMOS 控制端口的地址。*/ \
+inb_p(0x71); /* 从 0x71 读取1个字节，0x71 为 CMOS 数据端口的地址。*/ \
 })
 
+/**
+ * @brief BCD 码转换为十进制码。
+ * @note BCD 码为半字节（4bit）表示一个十进制数，如0b0001_0101表示15，即0001表示1，0101表示5，合起来就是15。
+ */
 #define BCD_TO_BIN(val) ((val)=((val)&15) + ((val)>>4)*10)
 
+/**
+ * @brief 时钟初始化，赋值计算机开机时间。
+ * @details 开机时间计算为 1970年1月1日 开始的秒数。
+ */
 static void time_init(void)
 {
     struct tm time;
@@ -84,15 +88,16 @@ static void time_init(void)
         time.tm_mday = CMOS_READ(7);
         time.tm_mon = CMOS_READ(8);
         time.tm_year = CMOS_READ(9);
-    } while (time.tm_sec != CMOS_READ(0));
-    BCD_TO_BIN(time.tm_sec);
+    } while (time.tm_sec != CMOS_READ(0));  /* 这里的比较秒是确保在 1s 内读取完所有的时间信息，因为存在发生时间进位跳变而读取的时钟紊乱的情况。*/
+
+    BCD_TO_BIN(time.tm_sec);        ///< BCD 码转换为十进制码。
     BCD_TO_BIN(time.tm_min);
     BCD_TO_BIN(time.tm_hour);
     BCD_TO_BIN(time.tm_mday);
     BCD_TO_BIN(time.tm_mon);
     BCD_TO_BIN(time.tm_year);
-    time.tm_mon--;
-    startup_time = kernel_mktime(&time);
+    time.tm_mon--;                  ///< cmos 通常月份从 1 开始，而 c 语言通常从 0 开始。
+    startup_time = kernel_mktime(&time);    ///< 转换为 1970年1月1日 开始的秒数。
 }
 
 static long memory_end = 0;
@@ -128,7 +133,7 @@ void main(void)        /* This really IS void, no error here. */
     blk_dev_init();
     chr_dev_init();
     tty_init();
-    time_init();
+    time_init();                                        ///< 时间初始化
     sched_init();
     buffer_init(buffer_memory_end);                     ///< buffer_memory_end = 4*1024*1024
     hd_init();

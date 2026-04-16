@@ -192,7 +192,8 @@ static struct buffer_head * find_buffer(int dev, int block)
 }
 
 /**
- * @brief 获取到对应设备 dev 的对应块 block 对应的内存映射 buffer_head 并增加引用计数。 未找到则返回 NULL。
+ * @brief 获取到对应设备 dev 的对应块 block 对应的内存映射 buffer_head 并增加引用计数。
+ * @return 未找到则返回 NULL。
  */
 struct buffer_head * get_hash_table(int dev, int block)
 {
@@ -279,7 +280,10 @@ repeat:
     return bh;
 }
 
-/* 释放缓冲区，唤醒没有缓冲区可用的进程 */
+/**
+ * @brief 释放缓冲区，唤醒没有缓冲区可用的进程
+ * @details 操作只是减少进程的引用个数，实际的释放是在 getblk 调用时进行磁盘同步。
+ */
 void brelse(struct buffer_head * buf)
 {
     if (!buf)                       ///< 如果缓冲区为空，则直接返回。
@@ -291,7 +295,7 @@ void brelse(struct buffer_head * buf)
 }
 
 /*
- * bread() 读取一个特定的块到缓冲区中并且返回这个缓冲区
+ * bread() 读取一个特定的块到缓冲区中并且返回这个缓冲区 buffer_head
  * 会等待读取完成，读取块大小为 512 * 2 = 1K。
  * 如果无法读取，返回 NULL。（第一次读取了 MBR，第二次读取了 0x306）。
  */

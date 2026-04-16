@@ -31,10 +31,10 @@
 void buffer_init(long buffer_end);
 
 #define MAJOR(a) (((unsigned)(a))>>8)        ///< 主设备号（高8位）
-#define MINOR(a) ((a)&0xff)                    ///< 次设备号（低8位）
+#define MINOR(a) ((a)&0xff)                  ///< 次设备号（低8位）
 
 #define NAME_LEN 14
-#define ROOT_INO 1
+#define ROOT_INO 1      /* 根目录的 inode 号。*/
 
 #define I_MAP_SLOTS 8
 #define Z_MAP_SLOTS 8
@@ -65,16 +65,18 @@ __asm__("incl %0\n\tandl $4095,%0"::"m" (head))
 
 typedef char buffer_block[BLOCK_SIZE];
 
-/* 内存管理 buffer */
+/**
+ * @brief 磁盘的内存映射
+ */
 struct buffer_head 
 {
-    char * b_data;                    /* pointer to data block (1024 bytes) */
+    char * b_data;                  /* pointer to data block (1024 bytes) */
     unsigned long b_blocknr;        /* 对应硬盘的逻辑块号，标识这块内存对应磁盘的第多少个块 */
-    unsigned short b_dev;            /* device (0 = free) */
-    unsigned char b_uptodate;        /* 表示该缓冲块（buffer）中的数据是否是最新的、已从磁盘读取或已正确写入的。*/
-    unsigned char b_dirt;            /* 是否为脏的标记，脏表示需要同步到磁盘。0-非脏，1-脏。 */
-    unsigned char b_count;            /* 使用当前缓冲区的进程个数 */
-    unsigned char b_lock;            /* 0 - ok, 1 -locked */
+    unsigned short b_dev;           /* device (0 = free) */
+    unsigned char b_uptodate;       /* 表示该缓冲块（buffer）中的数据是否是最新的、已从磁盘读取或已正确写入的。*/
+    unsigned char b_dirt;           /* 是否为脏的标记，脏表示需要同步到磁盘。0-非脏，1-脏。 */
+    unsigned char b_count;          /* 使用当前缓冲区的进程个数。*/
+    unsigned char b_lock;           /* 0 - ok, 1 -locked */
     struct task_struct * b_wait;    /* 等待在此内存块的进程 */
     struct buffer_head * b_prev;
     struct buffer_head * b_next;
@@ -94,16 +96,20 @@ struct d_inode
     unsigned short i_zone[9];    ///< 数据块指针数组
 };
 
-/* 内存 inode */
+/**
+ * @brief 内存 inode
+ * @details inode 可以指向块设备（/dev/hda）、目录或文件、管道。
+ */
 struct m_inode 
 {
-    unsigned short i_mode;          ///< 文件模式
+    unsigned short i_mode;          ///< 文件类型，可以为块设备文件、管道、目录、普通文件。
     unsigned short i_uid;           ///< 文件所有者的用户标识符
-    unsigned long i_size;           ///< 文件大小，也被用来存储管道缓冲区所在物理内存地址。
+    unsigned long i_size;           ///< 如果是文件，则为文件大小；
+                                    ///< 如果是管道，存储管道缓冲区所在物理内存地址。
     unsigned long i_mtime;          ///< 文件内容最后一次被修改的时间戳
     unsigned char i_gid;            ///< 文件所属组的标识符
-    unsigned char i_nlinks;
-    unsigned short i_zone[9];       ///< 数据块指针，指向文件实际数据存储的物理块号，前7个直接指针，第8个为一级指针，第9个为二级指针。
+    unsigned char i_nlinks;         ///< 硬链接数。
+    unsigned short i_zone[9];       ///< 数据块指针，指向文件实际数据存储的物理块号，前 7 个直接指针，第 8 个为一级指针，第 9 个为二级指针。
                                     ///< 如果是块设备，则 i_zone[0] 存储了设备号。
 
     /* 下面这些属性是内存 inode 独有的，内存 inode 继承了磁盘 inode */
@@ -111,7 +117,7 @@ struct m_inode
     unsigned long i_atime;          ///< 访问时间，文件最后被读取（Read）的时间。
     unsigned long i_ctime;          ///< 状态改变时间，文件元数据（如权限、所有者）最后被修改的时间。
     unsigned short i_dev;           ///< 设备号，该 inode 所在的设备编号（如 0x301 代表 hda1）。
-    unsigned short i_num;           ///< inode 编号，该 inode 在文件系统中的唯一编号（索引）。
+    unsigned short i_num;           ///< inode 编号，该 inode 在文件系统中的唯一编号（索引）。inode 号 1 固定是根目录。
     unsigned short i_count;         ///< 引用计数，记录当前有多少个进程或数据结构正在使用这个 inode。
     unsigned char i_lock;           ///< 锁标志。
     unsigned char i_dirt;           ///< 脏标记。
@@ -131,7 +137,7 @@ struct file {
 };
 
 /**
- * @brief 文件系统超级块
+ * @brief 文件系统超级块，一个文件系统超级块代表了一个分区。
  */
 struct super_block
 {
@@ -145,7 +151,8 @@ struct super_block
     unsigned short s_magic;            ///< 魔数，Minix文件系统时 0x137F
 /* These are only in memory */
     struct buffer_head * s_imap[8];    ///< inode 位图在内存中的缓冲
-    struct buffer_head * s_zmap[8];    ///< 数据块位图在内存中的缓冲
+    struct buffer_head * s_zmap[8];    ///< 数据块位图在内存中的缓冲，一个磁盘块用 1 bit 表示，一个 buffer_head 有 1024 Bytes，能表示 8192 个磁盘块占用情况。
+                                       ///< 这样这个数组能表示 8192 * 8 个数据块，一个块大小为 1K。
     unsigned short s_dev;              ///< 该超级块对应的设备号（0x0301=/dev/hda1）
     struct m_inode * s_isup;           ///< 指向根目录的 inode（/目录）
     struct m_inode * s_imount;         ///< 如果该文件系统（如 U 盘）被 mount 到某个目录，指向该目录的 inode。

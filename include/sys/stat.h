@@ -19,17 +19,17 @@ struct stat
 };
 
 #define S_IFMT  00170000
-#define S_IFREG  0100000
+#define S_IFREG  0100000    /* 普通的文件 */
 #define S_IFBLK  0060000    /* 块设备文件，硬盘、软盘、光盘等可以随机访问的存储设备。*/
-#define S_IFDIR  0040000
+#define S_IFDIR  0040000    /* 目录文件 */
 #define S_IFCHR  0020000
 #define S_IFIFO  0010000
 #define S_ISUID  0004000
 #define S_ISGID  0002000
 #define S_ISVTX  0001000
 
-#define S_ISREG(m)    (((m) & S_IFMT) == S_IFREG)
-#define S_ISDIR(m)    (((m) & S_IFMT) == S_IFDIR)
+#define S_ISREG(m)    (((m) & S_IFMT) == S_IFREG)   /* 判断是否为普通的文件。*/
+#define S_ISDIR(m)    (((m) & S_IFMT) == S_IFDIR)   /* 判断是否为目录文件。*/
 #define S_ISCHR(m)    (((m) & S_IFMT) == S_IFCHR)
 #define S_ISBLK(m)    (((m) & S_IFMT) == S_IFBLK)   /* 判断是否为块设备文件。*/
 #define S_ISFIFO(m)   (((m) & S_IFMT) == S_IFIFO)
