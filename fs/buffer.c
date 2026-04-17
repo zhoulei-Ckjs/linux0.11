@@ -294,10 +294,10 @@ void brelse(struct buffer_head * buf)
     wake_up(&buffer_wait);          ///< 这个队列中是拿不到缓冲区的队列，那我这里既然要释放该缓冲区了，说明这个缓冲区可以给别人用了，所以这里唤醒等获取缓冲区的进程。
 }
 
-/*
- * bread() 读取一个特定的块到缓冲区中并且返回这个缓冲区 buffer_head
- * 会等待读取完成，读取块大小为 512 * 2 = 1K。
- * 如果无法读取，返回 NULL。（第一次读取了 MBR，第二次读取了 0x306）。
+/**
+ * @brief 读取一个特定的块到缓冲区中并且返回这个缓冲区 buffer_head
+ * @details 会等待读取完成，读取块大小为 512 * 2 = 1K。
+ * @return 如果无法读取，返回 NULL。（第一次读取了 MBR，第二次读取了 0x306）。
  */
 struct buffer_head * bread(int dev,int block)               ///< dev = 0x300, block = 0
 {

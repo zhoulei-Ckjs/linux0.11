@@ -59,7 +59,7 @@ static union task_union init_task = {INIT_TASK,};
 
 long volatile jiffies = 0;  ///< 自系统启动以来经过的“时钟滴答”次数。
 long startup_time = 0;      ///< 系统开始时间，即 1970年1月1日 开始的秒数。
-struct task_struct *current = &(init_task.task);
+struct task_struct *current = &(init_task.task);    ///< 当前进程指针
 struct task_struct *last_task_used_math = NULL;
 
 struct task_struct * task[NR_TASKS] = {&(init_task.task), };

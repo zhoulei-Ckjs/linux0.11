@@ -287,14 +287,14 @@ void mount_root(void)
 		panic("Unable to mount root");
 	if (!(mi = iget(ROOT_DEV, ROOT_INO)))   ///< ROOT_DEV = 0x306
 		panic("Unable to read root i-node");
-	mi->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
-	p->s_isup = p->s_imount = mi;
-	current->pwd = mi;
-	current->root = mi;
-	free=0;
-	i=p->s_nzones;
-	while (-- i >= 0)
-		if (!set_bit(i&8191,p->s_zmap[i>>13]->b_data))
+	mi->i_count += 3 ;					///< 这里总共是 4 个引用（超级块2个，当前进程2个），分配的时候默认有 1 个，所以应该加 3 个。
+	p->s_isup = p->s_imount = mi;		///< 超级块增加两个这个 inode 的引用。
+	current->pwd = mi;					///< 当前进程的 inode 引用。
+	current->root = mi;					///< 当前进程的 inode 引用。
+	free = 0;
+	i = p->s_nzones;
+	while (--i >= 0)
+		if (!set_bit(i & 8191, p->s_zmap[i >> 13]->b_data))
 			free++;
 	printk("%d/%d free blocks\n\r",free,p->s_nzones);
 	free=0;

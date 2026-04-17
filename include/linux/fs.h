@@ -34,7 +34,7 @@ void buffer_init(long buffer_end);
 #define MINOR(a) ((a)&0xff)                  ///< 次设备号（低8位）
 
 #define NAME_LEN 14
-#define ROOT_INO 1      /* 根目录的 inode 号。*/
+#define ROOT_INO 1      /* 一个文件系统根目录的 inode 号。*/
 
 #define I_MAP_SLOTS 8
 #define Z_MAP_SLOTS 8
