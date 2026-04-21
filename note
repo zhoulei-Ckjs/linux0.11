@@ -19,6 +19,12 @@ memory_end:
 
 内联汇编 "S" (buf) 其中 "S" 标识 SI 寄存器。
 
+bt
+	语法：
+		intel:	bt 基址,位偏移
+		AT&T:	bt 位偏移,基址
+	测试 基址指向的内存的第 位偏移 位复制到CF中。
+
 btrl
 	Bit Test and Reset Long。
 	它的作用是：测试指定位的值，然后将其清零（复位），同时将该位的旧值保存到进位标志位（CF）中。
@@ -36,6 +42,13 @@ outsw
 	out: Output，表示输出数据（从 CPU/内存 -> I/O 端口）。
 	s: String，表示这是一个字符串操作指令，意味着它可以配合 rep 前缀进行循环批量传输，而不仅仅是传输一个字节。
 	w: Word，表示数据传输的单位是字（Word），即 2 个字节 (16 bits)。
+
+setb
+	set if below
+	语法：setb %%al
+	根据CF位，设置目标寄存器的值，具体规则：
+		CF == 1, 则目标字节 = 1
+		CF == 0，则目标字节 = 0
 
 setnb %%al
 	set byte if not below

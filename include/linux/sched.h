@@ -75,7 +75,8 @@ struct tss_struct {
     struct i387_struct i387;
 };
 
-struct task_struct {
+struct task_struct 
+{
 /* these are hardcoded - don't touch */
     long state;    /* -1 unrunnable, 0 runnable, >0 stopped */
     long counter;        /* 当前进程剩余时间片 */
@@ -95,8 +96,8 @@ struct task_struct {
 /* file system info */
     int tty;        /* -1 if no tty, so it must be signed */
     unsigned short umask;
-    struct m_inode * pwd;
-    struct m_inode * root;
+    struct m_inode * pwd;       ///< 进程的当前目录的inode。
+    struct m_inode * root;      ///< 进程的根目录。
     struct m_inode * executable;
     unsigned long close_on_exec;
     struct file * filp[NR_OPEN];

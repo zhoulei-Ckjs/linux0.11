@@ -18,11 +18,16 @@
 int sync_dev(int dev);
 void wait_for_keypress(void);
 
-/* set_bit uses setb, as gas doesn't recognize setc */
-#define set_bit(bitnr,addr) ({ \
+/* set_bit uses setb, as gas doesn't recognize setc（gas是一种汇编器）*/
+/**
+ * @brief 判断 addr 位置的 bitnr 位是否为 1，如果是 1 则返回 true，否则返回 false。
+ * @details 取出 addr 位置的第 bitnr 位，存入 al 中，并返回 al 值。
+ */
+#define set_bit(bitnr, addr) ({ \
 register int __res __asm__("ax"); \
-__asm__("bt %2,%3;setb %%al":"=a" (__res):"a" (0),"r" (bitnr),"m" (*(addr))); \
+__asm__("bt %2,%3; setb %%al":"=a" (__res):"a" (0),"r" (bitnr),"m" (*(addr))); /* 检查addr[bitnr]的值，将值同步到 al 中。*/ \
 __res; })
+
 /* 文件系统超级块 */
 struct super_block super_block[NR_SUPER];
 /* 在 main 里面初始化，得到 ROOT_DEV = 0x306（第二块硬盘第一个可用分区，非/dev/hdb，为/dev/hdb1）*/
@@ -107,7 +112,9 @@ void put_super(int dev)
 	return;
 }
 
-/* 读取磁盘中的 超级块 和 紧随超级块的 inode 位图 以及 数据块位图 */
+/**
+ * @brief 读取磁盘中的 超级块 和 紧随超级块的 inode 位图 以及 数据块位图
+ */
 static struct super_block * read_super(int dev)		///< dev = 0x306
 {
 	struct super_block * s;
@@ -283,8 +290,10 @@ void mount_root(void)
 		p->s_lock = 0;					///< 非锁定
 		p->s_wait = NULL;				///< 等待该超级块的进程队列
 	}
+	/// 从磁盘中读取超级块
 	if (!(p = read_super(ROOT_DEV)))    ///< ROOT_DEV = 0x306
 		panic("Unable to mount root");
+	/// 获取 root inode。
 	if (!(mi = iget(ROOT_DEV, ROOT_INO)))   ///< ROOT_DEV = 0x306
 		panic("Unable to read root i-node");
 	mi->i_count += 3 ;					///< 这里总共是 4 个引用（超级块2个，当前进程2个），分配的时候默认有 1 个，所以应该加 3 个。
@@ -293,6 +302,7 @@ void mount_root(void)
 	current->root = mi;					///< 当前进程的 inode 引用。
 	free = 0;
 	i = p->s_nzones;
+	/// 统计有多少个空的磁盘块（每个块1KB）。
 	while (--i >= 0)
 		if (!set_bit(i & 8191, p->s_zmap[i >> 13]->b_data))
 			free++;
