@@ -138,30 +138,35 @@ struct file {
 
 /**
  * @brief 文件系统超级块，一个文件系统超级块代表了一个分区。
+ * @details 一个 super_block 能表示 64Mb 硬盘。
  */
 struct super_block
 {
-    unsigned short s_ninodes;          ///< inode 总数。
-    unsigned short s_nzones;           ///< 磁盘总块数（1块 = 1KB）。
-    unsigned short s_imap_blocks;      ///< inode 位图占用的逻辑块数量（一个逻辑块 1KB）。
-    unsigned short s_zmap_blocks;      ///< 数据块位图占用的磁盘块数（每个数据块 1KB）。
-    unsigned short s_firstdatazone;    ///< 第一个数据块的块号
-    unsigned short s_log_zone_size;    ///< 
-    unsigned long s_max_size;          ///<
-    unsigned short s_magic;            ///< 魔数，Minix文件系统时 0x137F
+    unsigned short s_ninodes;           ///< inode 总数。
+    unsigned short s_nzones;            ///< 磁盘总块数（1块 = 1KB）。
+    unsigned short s_imap_blocks;       ///< inode 位图占用的逻辑块数量（一个逻辑块 1KB）。
+    unsigned short s_zmap_blocks;       ///< 数据块位图占用的磁盘块数（每个数据块 1KB）。
+    unsigned short s_firstdatazone;     ///< 第一个数据块的块号
+    unsigned short s_log_zone_size;     ///< 
+    unsigned long s_max_size;           ///<
+    unsigned short s_magic;             ///< 魔数，Minix文件系统时 0x137F
 /* These are only in memory */
-    struct buffer_head * s_imap[8];    ///< inode 位图在内存中的缓冲
-    struct buffer_head * s_zmap[8];    ///< 数据块位图在内存中的缓冲，一个磁盘块用 1 bit 表示，一个 buffer_head 有 1024 Bytes，能表示 8192 个磁盘块占用情况。
-                                       ///< 这样这个数组能表示 8192 * 8 个数据块，一个块大小为 1K。
-    unsigned short s_dev;              ///< 该超级块对应的设备号（0x0301=/dev/hda1）
-    struct m_inode * s_isup;           ///< 指向根目录的 inode（/目录）
-    struct m_inode * s_imount;         ///< 如果该文件系统（如 U 盘）被 mount 到某个目录，指向该目录的 inode。
-                                       ///< 超级块也会增加 inode 的一个引用计数，致使 s_imount 的 inode 永远不会被释放。
-    unsigned long s_time;              ///< 最后一次修改时间
-    struct task_struct * s_wait;       ///< 等待该超级块的进程队列
-    unsigned char s_lock;              ///< 锁定标志，防止并发修改
-    unsigned char s_rd_only;           ///< 只读标志
-    unsigned char s_dirt;              ///< 脏标志
+    struct buffer_head * s_imap[8];     ///< inode 位图在内存中的缓冲。inode 位图中的每一位表示一个 inode 是否被使用（0表示空闲，1表示使用）。
+                                        ///< 当创建新文件时，文件系统会扫描 inode 位图，找到第一个空闲位，将其置为 1，分配对应的 inode；
+                                        ///< 删除文件时，将对应位清 0，释放 inode。
+
+    struct buffer_head * s_zmap[8];     ///< 数据块位图在内存中的缓冲，一个磁盘块用 1 bit 表示，一个 buffer_head 有 1024 Bytes，能表示 8192 个磁盘块占用情况。
+                                        ///< 这样这个数组能表示 8192 * 8 个数据块，一个块大小为 1K。总共能表示 8192 * 8 * 1024 = 64 Mb。
+
+    unsigned short s_dev;               ///< 该超级块对应的设备号（0x0301=/dev/hda1）
+    struct m_inode * s_isup;            ///< 指向根目录的 inode（/目录）
+    struct m_inode * s_imount;          ///< 如果该文件系统（如 U 盘）被 mount 到某个目录，指向该目录的 inode。
+                                        ///< 超级块也会增加 inode 的一个引用计数，致使 s_imount 的 inode 永远不会被释放。
+    unsigned long s_time;               ///< 最后一次修改时间
+    struct task_struct * s_wait;        ///< 等待该超级块的进程队列
+    unsigned char s_lock;               ///< 锁定标志，防止并发修改
+    unsigned char s_rd_only;            ///< 只读标志
+    unsigned char s_dirt;               ///< 脏标志
 };
 
 struct d_super_block {

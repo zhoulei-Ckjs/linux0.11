@@ -268,6 +268,11 @@ int sys_mount(char * dev_name, char * dir_name, int rw_flag)
 	return 0;			/* we do that in umount */
 }
 
+/**
+ * @brief 挂载 root inode。
+ * @details 1.初始化超级快；2.读取 root inode；3.增加对 root inode 的引用，包括 current->pwd、current->root、super_block->s_isup、super_block->s_imount
+ * 4.统计并打印该分区有多少空闲磁盘块（每块 1KB），有多少空闲 inode。
+ */
 void mount_root(void)
 {
 	int i,free;
@@ -277,40 +282,45 @@ void mount_root(void)
 	if (32 != sizeof (struct d_inode))
 		panic("bad i-node size");
 	for(i = 0; i < NR_FILE; i++)
-		file_table[i].f_count = 0;		///< 文件引用计数为 0。
-	if (MAJOR(ROOT_DEV) == 2)			///< floppy 的处理。
+		file_table[i].f_count = 0;			///< 文件引用计数为 0。
+	if (MAJOR(ROOT_DEV) == 2)				///< floppy 的处理。
 	{
 		printk("Insert root floppy and press ENTER");
 		wait_for_keypress();
 	}
+
 	/// 初始化超级块
 	for(p = &super_block[0] ; p < &super_block[NR_SUPER] ; p++) 
 	{
-		p->s_dev = 0;					///< 超级块对应的设备号
-		p->s_lock = 0;					///< 非锁定
-		p->s_wait = NULL;				///< 等待该超级块的进程队列
+		p->s_dev = 0;						///< 超级块对应的设备号
+		p->s_lock = 0;						///< 非锁定
+		p->s_wait = NULL;					///< 等待该超级块的进程队列
 	}
 	/// 从磁盘中读取超级块
-	if (!(p = read_super(ROOT_DEV)))    ///< ROOT_DEV = 0x306
+	if (!(p = read_super(ROOT_DEV)))		///< ROOT_DEV = 0x306
 		panic("Unable to mount root");
-	/// 获取 root inode。
+
+	/// 获取 root inode。(root inode 在文件系统初始化时创建的，如用 mkfs 格式化，会分配 inode 表中第 1 个 inode 作为根目录。)
 	if (!(mi = iget(ROOT_DEV, ROOT_INO)))   ///< ROOT_DEV = 0x306
 		panic("Unable to read root i-node");
-	mi->i_count += 3 ;					///< 这里总共是 4 个引用（超级块2个，当前进程2个），分配的时候默认有 1 个，所以应该加 3 个。
-	p->s_isup = p->s_imount = mi;		///< 超级块增加两个这个 inode 的引用。
-	current->pwd = mi;					///< 当前进程的 inode 引用。
-	current->root = mi;					///< 当前进程的 inode 引用。
+	mi->i_count += 3;						///< 这里总共是 4 个引用（超级块2个，当前进程2个），分配的时候默认有 1 个，所以应该加 3 个。
+	p->s_isup = p->s_imount = mi;			///< 超级块增加两个这个 inode 的引用。
+	current->pwd = mi;						///< 当前进程的 inode 引用。
+	current->root = mi;						///< 当前进程的 inode 引用。
 	free = 0;
 	i = p->s_nzones;
+
 	/// 统计有多少个空的磁盘块（每个块1KB）。
 	while (--i >= 0)
 		if (!set_bit(i & 8191, p->s_zmap[i >> 13]->b_data))
 			free++;
-	printk("%d/%d free blocks\n\r",free,p->s_nzones);
-	free=0;
-	i=p->s_ninodes+1;
-	while (-- i >= 0)
-		if (!set_bit(i&8191,p->s_imap[i>>13]->b_data))
+	printk("%d/%d free blocks\n\r", free,p->s_nzones);
+	free = 0;
+	i = p->s_ninodes + 1;
+
+	/// 统计有多少空闲的 inode
+	while (--i >= 0)
+		if (!set_bit(i & 8191, p->s_imap[i >> 13]->b_data))
 			free++;
 	printk("%d/%d free inodes\n\r",free,p->s_ninodes);
 }
