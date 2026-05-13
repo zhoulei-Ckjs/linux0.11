@@ -97,7 +97,7 @@ struct d_inode
 };
 
 /**
- * @brief 内存 inode
+ * @brief 内存 inode，文件系统级的数据结构。
  * @details inode 可以指向块设备（/dev/hda）、目录或文件、管道。
  */
 struct m_inode 
@@ -127,13 +127,16 @@ struct m_inode
     unsigned char i_update;         ///< 更新标记，辅助标志，用于标记某些特定的更新状态，配合 i_dirt 使用。
 };
 
-/* 进程打开的文件 */
-struct file {
-    unsigned short f_mode;        ///< 文件访问模式
-    unsigned short f_flags;        ///< 文件状态标志
-    unsigned short f_count;        ///< 文件引用计数
-    struct m_inode * f_inode;    ///< 指向内存 inode
-    off_t f_pos;                ///< 当前文件位置，偏移量
+/**
+ * @brief 文件对象
+ */
+struct file 
+{
+    unsigned short f_mode;          ///< 文件访问模式
+    unsigned short f_flags;         ///< 文件状态标志
+    unsigned short f_count;         ///< 文件引用计数
+    struct m_inode * f_inode;       ///< 指向内存 inode
+    off_t f_pos;                    ///< 当前文件位置，偏移量
 };
 
 /**

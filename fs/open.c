@@ -1,9 +1,3 @@
-/*
- *  linux/fs/open.c
- *
- *  (C) 1991  Linus Torvalds
- */
-
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -135,23 +129,28 @@ int sys_chown(const char * filename,int uid,int gid)
 	return 0;
 }
 
-int sys_open(const char * filename,int flag,int mode)
+/// @retval EINVAL 打开文件数过多
+int sys_open(const char * filename, int flag, int mode)
 {
 	struct m_inode * inode;
 	struct file * f;
 	int i,fd;
 
-	mode &= 0777 & ~current->umask;
-	for(fd=0 ; fd<NR_OPEN ; fd++)
+	mode &= 0777 & ~current->umask;		///< 去除默认权限。
+	for(fd = 0 ; fd < NR_OPEN ; fd++)	///< 寻找一块空闲文件指针
 		if (!current->filp[fd])
 			break;
-	if (fd>=NR_OPEN)
+	if (fd >= NR_OPEN)					///< 判断打开文件数是否超限
 		return -EINVAL;
-	current->close_on_exec &= ~(1<<fd);
-	f=0+file_table;
-	for (i=0 ; i<NR_FILE ; i++,f++)
-		if (!f->f_count) break;
-	if (i>=NR_FILE)
+	current->close_on_exec &= ~(1 << fd);	///< 在执行exec时默认不关闭该文件描述符。
+
+	/* 在全局文件表中找一个空闲的文件对象 */
+	f = 0 + file_table;
+	for (i = 0 ; i < NR_FILE ; i++, f++)
+		if (!f->f_count)
+			break;
+
+	if (i >= NR_FILE)
 		return -EINVAL;
 	(current->filp[fd]=f)->f_count++;
 	if ((i=open_namei(filename,flag,mode,&inode))<0) {

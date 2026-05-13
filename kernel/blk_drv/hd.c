@@ -72,7 +72,13 @@ __asm__("cld;rep;outsw"::"d" (port),"S" (buf),"c" (nr):"cx","si")   /* outsw 输
 extern void hd_interrupt(void);
 extern void rd_load(void);
 
-/* This may be used only once, enforced by 'static int callable' */
+/**
+ * @brief 系统设置
+ * @param BIOS bios中存储的磁盘信息。
+ * @details 1.读取磁盘硬件信息；2.读取分区表信息；3.挂载根目录 inode，一般为第一个分区的 inode 表的第一个 inode。
+ * @retval -1 重复调用，之前已完成设置。
+ * @retval 0 成功。
+ */
 int sys_setup(void * BIOS)
 {
     static int callable = 1;
@@ -81,52 +87,33 @@ int sys_setup(void * BIOS)
     struct partition *p;
     struct buffer_head * bh;
 
-    if (!callable)
+    if (!callable)      ///< 设置只能调用一次
         return -1;
     callable = 0;
-#ifndef HD_TYPE				///< 从BIOS里面读取数据
-    for (drive=0 ; drive<2 ; drive++) {
+
+    /// 读取磁盘信息。
+#ifndef HD_TYPE
+    for (drive=0 ; drive<2 ; drive++) 
+    {
         hd_info[drive].cyl = *(unsigned short *) BIOS;
-        hd_info[drive].head = *(unsigned char *) (2+BIOS);
-        hd_info[drive].wpcom = *(unsigned short *) (5+BIOS);
-        hd_info[drive].ctl = *(unsigned char *) (8+BIOS);
-        hd_info[drive].lzone = *(unsigned short *) (12+BIOS);
-        hd_info[drive].sect = *(unsigned char *) (14+BIOS);
+        hd_info[drive].head = *(unsigned char *) (2 + BIOS);
+        hd_info[drive].wpcom = *(unsigned short *) (5 + BIOS);
+        hd_info[drive].ctl = *(unsigned char *) (8 + BIOS);
+        hd_info[drive].lzone = *(unsigned short *) (12 + BIOS);
+        hd_info[drive].sect = *(unsigned char *) (14 + BIOS);
         BIOS += 16;
     }
     if (hd_info[1].cyl)
-        NR_HD=2;
+        NR_HD = 2;
     else
-        NR_HD=1;
+        NR_HD = 1;
 #endif
-    for (i=0 ; i<NR_HD ; i++) {     ///< hd[0] 是整个硬盘（hda），参数来自 BIOS（CMOS）
+    for (i=0 ; i < NR_HD ; i++)         ///< hd[0] 是整个硬盘（hda），参数来自 BIOS（CMOS）。
+    {
         hd[i*5].start_sect = 0;
-        hd[i*5].nr_sects = hd_info[i].head*
-                hd_info[i].sect*hd_info[i].cyl;
+        hd[i*5].nr_sects = hd_info[i].head * hd_info[i].sect * hd_info[i].cyl;
     }
-
-    /*
-        We querry CMOS about hard disks : it could be that 
-        we have a SCSI/ESDI/etc controller that is BIOS
-        compatable with ST-506, and thus showing up in our
-        BIOS table, but not register compatable, and therefore
-        not present in CMOS.
-
-        Furthurmore, we will assume that our ST-506 drives
-        <if any> are the primary drives in the system, and 
-        the ones reflected as drive 1 or 2.
-
-        The first drive is stored in the high nibble of CMOS
-        byte 0x12, the second in the low nibble.  This will be
-        either a 4 bit drive type or 0xf indicating use byte 0x19 
-        for an 8 bit type, drive 1, 0x1a for drive 2 in CMOS.
-
-        Needless to say, a non-zero value means we have 
-        an AT controller hard disk for that drive.
-
-        
-    */
-
+    /// 一些硬盘控制器与BIOS兼容，所以会出现在 BIOS 表中，另外一些不兼容，需要从寄存器里面读取
     if ((cmos_disks = CMOS_READ(0x12)) & 0xf0)
         if (cmos_disks & 0x0f)
             NR_HD = 2;
@@ -134,17 +121,17 @@ int sys_setup(void * BIOS)
             NR_HD = 1;
     else
         NR_HD = 0;
-    for (i = NR_HD ; i < 2 ; i++) 
+    for (i = NR_HD ; i < 2 ; i++)
     {
         hd[i*5].start_sect = 0;
         hd[i*5].nr_sects = 0;
     }
 
     /* 读取硬盘分区表 */
-    for (drive=0 ; drive < NR_HD ; drive++) 
+    for (drive = 0 ; drive < NR_HD ; drive++) 
     {
-        /// 0x300是第一块硬盘/dev/hd0，硬盘分区表在MBR内部，
-        /// 需要读取MBR来获取硬盘分区表（分区表位于MBR扇区最后66字节（64+0x55aa））。
+        /// 0x300是第一块硬盘/dev/hd0，硬盘分区表在 MBR 内部，
+        /// 需要读取MBR来获取硬盘分区表（分区表位于 MBR 扇区最后 66 字节（64 + 0x55aa））。
         if (!(bh = bread(0x300 + drive*5,0))) 
         {
             printk("Unable to read partition table of drive %d\n\r", drive);
@@ -168,9 +155,10 @@ int sys_setup(void * BIOS)
     if (NR_HD)
         printk("Partition table%s ok.\n\r",(NR_HD>1)?"s":"");
     rd_load();          ///< 如果是 ramdisk。
-    mount_root();
+    mount_root();       ///< 挂载分区根目录。分区一般是硬盘第一个分区，由 ROOT_DEV 确定，如果 ROOT_DEV 指定的是第二个分区，则挂载的 inode 为第二个分区的 inode 表的第一个 inode。
     return (0);
 }
+
 /* 确保硬盘控制器处于 READY 状态 */
 static int controller_ready(void)
 {

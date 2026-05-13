@@ -7,7 +7,7 @@
 #define O_ACCMODE	00003
 #define O_RDONLY	   00
 #define O_WRONLY	   01
-#define O_RDWR		   02
+#define O_RDWR		   02	/* ¶ÁÐ´È¨ÏÞ */
 #define O_CREAT		00100	/* not fcntl */
 #define O_EXCL		00200	/* not fcntl */
 #define O_NOCTTY	00400	/* not fcntl */

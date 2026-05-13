@@ -269,7 +269,7 @@ int sys_mount(char * dev_name, char * dir_name, int rw_flag)
 }
 
 /**
- * @brief 挂载 root inode。
+ * @brief 挂载 root inode（分区根目录）。
  * @details 1.初始化超级快；2.读取 root inode；3.增加对 root inode 的引用，包括 current->pwd、current->root、super_block->s_isup、super_block->s_imount
  * 4.统计并打印该分区有多少空闲磁盘块（每块 1KB），有多少空闲 inode。
  */

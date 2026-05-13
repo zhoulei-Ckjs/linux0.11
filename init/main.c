@@ -20,9 +20,9 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
-static inline _syscall0(int,fork)
+static inline _syscall0(int,fork)                   /* 会调用 _system_call */
 static inline _syscall0(int,pause)
-static inline _syscall1(int,setup,void *,BIOS)
+static inline _syscall1(int, setup, void *, BIOS)   /* sys_call_table，BIOS：bios中存储的磁盘信息。*/
 static inline _syscall0(int,sync)
 
 #include <linux/tty.h>
@@ -56,7 +56,7 @@ extern long startup_time;
  * This is set up by the setup-routine at boot-time
  */
 #define EXT_MEM_K (*(unsigned short *)0x90002)          /* 扩展内存大小（1MB以后的可用内存，单位 KB）,由 setup.s 写入到这个位置。*/
-#define DRIVE_INFO (*(struct drive_info *)0x90080)
+#define DRIVE_INFO (*(struct drive_info *)0x90080)      /* setup.s:59 硬盘信息。*/
 #define ORIG_ROOT_DEV (*(unsigned short *)0x901FC)      /* 这个位置存储了根设备号，硬盘为 0x306 */
 
 /**
@@ -104,7 +104,7 @@ static long memory_end = 0;
 static long buffer_memory_end = 0;
 static long main_memory_start = 0;
 
-struct drive_info { char dummy[32]; } drive_info;
+struct drive_info { char dummy[32]; } drive_info;       ///< 磁盘信息。
 
 void main(void)        /* This really IS void, no error here. */
 {            /* The startup routine assumes (well, ...) this */
@@ -174,8 +174,8 @@ void init(void)
 {
     int pid,i;
 
-    setup((void *) &drive_info);
-    (void) open("/dev/tty0",O_RDWR,0);
+    setup((void *) &drive_info);            ///<  1.读取磁盘硬件信息；2.读取分区表信息；3.挂载根目录 inode，一般为第一个分区的 inode 表的第一个 inode。
+    (void) open("/dev/tty0", O_RDWR, 0);
     (void) dup(0);
     (void) dup(0);
     printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,

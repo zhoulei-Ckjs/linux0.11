@@ -57,16 +57,15 @@ start:
     mov    [12],cx
 
 ; Get hd0 data
-
     mov    ax,#0x0000
     mov    ds,ax
-    lds    si,[4*0x41]
+    lds    si, [4*0x41]     ; 0x41 中断向量存储了一个32位远指针，共 16 字节的硬盘信息。
     mov    ax,#INITSEG
     mov    es,ax
     mov    di,#0x0080
     mov    cx,#0x10
     rep
-    movsb
+    movsb                   ; 复制 16 字节。
 
 ; Get hd1 data
 
