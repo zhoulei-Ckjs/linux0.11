@@ -33,7 +33,7 @@ void buffer_init(long buffer_end);
 #define MAJOR(a) (((unsigned)(a))>>8)        ///< 主设备号（高8位）
 #define MINOR(a) ((a)&0xff)                  ///< 次设备号（低8位）
 
-#define NAME_LEN 14
+#define NAME_LEN 14     /* 最长文件名。*/
 #define ROOT_INO 1      /* 一个文件系统根目录的 inode 号。*/
 
 #define I_MAP_SLOTS 8
@@ -100,11 +100,12 @@ struct d_inode
  * @brief 内存 inode，文件系统级的数据结构。
  * @details inode 可以指向块设备（/dev/hda）、目录或文件、管道。
  */
-struct m_inode 
+struct m_inode
 {
-    unsigned short i_mode;          ///< 文件类型，可以为块设备文件、管道、目录、普通文件。
+    unsigned short i_mode;          ///< i_mode 高几位存文件类型，低 9 位存权限（所有者/所属组/其他人）。文件类型，可以为块设备文件、管道、目录、普通文件。
     unsigned short i_uid;           ///< 文件所有者的用户标识符
     unsigned long i_size;           ///< 如果是文件，则为文件大小；
+                                    ///< 如果是目录，里面存储了dir_entry表，即目录项表。
                                     ///< 如果是管道，存储管道缓冲区所在物理内存地址。
     unsigned long i_mtime;          ///< 文件内容最后一次被修改的时间戳
     unsigned char i_gid;            ///< 文件所属组的标识符
@@ -183,9 +184,13 @@ struct d_super_block {
     unsigned short s_magic;
 };
 
-struct dir_entry {
-    unsigned short inode;
-    char name[NAME_LEN];
+/**
+ * @brief 目录项
+ */
+struct dir_entry
+{
+    unsigned short inode;       ///< 索引节点编号。指向该文件名对应的实际文件/目录的inode号。
+    char name[NAME_LEN];        ///< 文件名。固定长度字符数组。
 };
 
 extern struct m_inode inode_table[NR_INODE];

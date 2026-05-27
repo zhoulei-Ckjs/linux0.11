@@ -14,8 +14,8 @@
  */
 #define NR_REQUEST	32
 
-/*
- * 磁盘请求结构体
+/**
+ * @brief 磁盘请求结构体
  */
 struct request 
 {
@@ -24,7 +24,7 @@ struct request
 	int errors;
 	unsigned long sector;			///< 要读写位置的扇区号，相对于该分区起始位置的逻辑扇区号
 	unsigned long nr_sectors;		///< 要读写的扇区数
-	char * buffer;					///< buffer_head 指向的内存。
+	char * buffer;					///< 完成磁盘读取后，会将数据写入 buffer 中，buffer 为 buffer_head 指向的内存，即 buffer_head->b_data。
 	struct task_struct * waiting;	///< 当前发起 IO 请求的进程
 	struct buffer_head * bh;		///< 内存块头
 	struct request * next;

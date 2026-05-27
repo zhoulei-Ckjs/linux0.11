@@ -36,8 +36,8 @@ inb_p(0x71); \
 
 static void recal_intr(void);
 
-static int recalibrate = 1;
-static int reset = 1;           ///< 硬盘重置标识
+static int recalibrate = 1;     ///< 在系统刚启动时或硬盘重置时需要重新校准。
+static int reset = 1;           ///< 硬盘重置标识，只在系统刚启动时或磁盘错误过多时需要重置。
 /* hd 结构。
  * head：磁头号，标识硬盘的哪个磁头正在读写。sect：逻辑扇区号，指定当前要读写的扇区。
  * cyl：柱面号。wpcom：写预补偿（早起硬盘中，当数据记录在高密度磁介质上时，相邻的磁记录位可能会相互干扰）。
@@ -185,9 +185,11 @@ static int win_result(void)
     return (1);
 }
 
-/* 硬盘执行命令，完成后硬盘产生 IRQ14 中断，CPU 跳转到中断向量 0x2E 进行处理 
- * nsect：待处理的扇区个数（512一个扇区）
- * sect：待处理的起始扇区。
+/** 
+ * @brief 向硬盘控制器发起命令（如读写扇区命令），异步方式。（若硬盘完成命令，则由硬盘产生 IRQ14 中断，CPU 跳转到中断向量 0x2E 进行处理。）
+ * 如：硬盘完成读取后由 IRQ14 调用回调函数 intr_addr 进行数据读取。
+ * @param nsect：待处理的扇区个数（512一个扇区）
+ * @param sect：待处理的起始扇区。
  */
 static void hd_out(unsigned int drive, unsigned int nsect, unsigned int sect,
         unsigned int head, unsigned int cyl, unsigned int cmd,
@@ -238,6 +240,7 @@ static void reset_controller(void)
     if ((i = inb(HD_ERROR)) != 1)
         printk("HD-controller reset failed: %02x\n\r",i);
 }
+
 /* 复位硬盘 */
 static void reset_hd(int nr)
 {
@@ -250,6 +253,7 @@ void unexpected_hd_interrupt(void)
 {
     printk("Unexpected HD interrupt\n\r");
 }
+
 /* 读写错误处理函数，当错误个数过多，清除 IO 队列头请求，设置重置磁盘标志。 */
 static void bad_rw_intr(void)
 {
@@ -370,13 +374,13 @@ void do_hd_request(void)
             bad_rw_intr();
             goto repeat;
         }
-        /* 硬盘控制器在收到WIN_WRITE后并不会直接触发IRQ14，而是等待数据写入，
+        /* 硬盘控制器在收到 WIN_WRITE 后并不会直接触发 IRQ14，而是等待数据写入，
         写完1个扇区后（512字节）才触发 IRQ14 中断，进入 0x2E 中断处理程序。*/
         port_write(HD_DATA, CURRENT->buffer, 256);
     } 
     else if (CURRENT->cmd == READ)  ///< 读请求
     {  
-        hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);   ///< dev = 0, nsect = 2, sec = 起始扇区 
+        hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);   ///< 发出读取硬盘扇区命令。dev = 0, nsect = 2, sec = 起始扇区。
     } 
     else
         panic("unknown hd-command");

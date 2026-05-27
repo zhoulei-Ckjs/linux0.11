@@ -25,9 +25,8 @@ struct request request[NR_REQUEST];                ///< IO请求
  */
 struct task_struct * wait_for_request = NULL;
 
-/* 磁盘请求数组，两部分组成：
- *  do_request-address
- *  next-request
+/** 
+ * @brief 磁盘请求数组，两部分组成：{请求处理函数，当前需要处理的请求}
  */
 struct blk_dev_struct blk_dev[NR_BLK_DEV] = 
 {

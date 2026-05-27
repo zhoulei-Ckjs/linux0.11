@@ -18,5 +18,4 @@ void free_s(void * obj, int size);
  * privs).  The implication of this is that you should do normal
  * permissions checks first, and check suser() last.
  */
-#define suser() (current->euid == 0)
-
+#define suser() (current->euid == 0)    /* 权限检查的用户是否为 root */

@@ -163,7 +163,7 @@ int create_block(struct m_inode * inode, int block)
 }
 
 /**
- * @brief inode put，即 inode 归还，将 inode 归还 inode_table，其他进程可以复用该 inode 了。
+ * @brief inode put，即 inode 归还（减少 inode->i_count 计数），如果计数为 0，则将 inode 归还 inode_table，其他进程可以复用该 inode 了。
  * @details 如果是管道文件（管道只在内存中存在，不在磁盘中），则释放管道文件；如果是块设备文件，则同步当前块设备的所有数据到磁盘。
  */
 void iput(struct m_inode * inode)

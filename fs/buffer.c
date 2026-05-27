@@ -33,7 +33,9 @@ static struct buffer_head * free_list;
 static struct task_struct * buffer_wait = NULL;
 int NR_BUFFERS = 0;         ///< buffer 块个数
 
-/* 等待读取完缓冲区（主要由硬盘初始化后触发 IRQ14 中断来完成） */
+/**
+ * @brief 等待读取完缓冲区（主要由硬盘初始化后触发 IRQ14 中断来完成）
+ */
 static inline void wait_on_buffer(struct buffer_head * bh)
 {
     cli();                  ///< 关中断
@@ -295,7 +297,7 @@ void brelse(struct buffer_head * buf)
 }
 
 /**
- * @brief 读取一个特定的块到缓冲区中并且返回这个缓冲区 buffer_head
+ * @brief 读取一个特定的块到缓冲区中，即读取到 buffer_head->b_data 中，并且返回这个缓冲区 buffer_head（过程为异步的读取）。
  * @details 会等待读取完成，读取块大小为 512 * 2 = 1K。
  * @return 如果无法读取，返回 NULL。（第一次读取了 MBR，第二次读取了 0x306）。
  */
@@ -307,8 +309,8 @@ struct buffer_head * bread(int dev,int block)               ///< dev = 0x300, bl
         panic("bread: getblk returned NULL\n");
     if (bh->b_uptodate)                                     ///< 内存块最新（与硬盘内容一致），则返回内存块。如果不一致的话就需要等待读取硬盘块到内存块中。
         return bh;
-    ll_rw_block(READ, bh);                                  ///< 创建读取硬盘块请求，这里是读取MBR。 
-    wait_on_buffer(bh);                                     ///< 进行进程切换，让出 CPU 并等待读取磁盘完成（主要是IRQ14中断触发来完成硬盘读取）。
+    ll_rw_block(READ, bh);                                  ///< 创建读取硬盘块请求，写入硬盘请求队列 blk_dev。 
+    wait_on_buffer(bh);                                     ///< 进行进程切换，让出 CPU 并等待读取磁盘完成（主要是 IRQ14 中断触发调用 read_intr 来完成硬盘读取）。
     if (bh->b_uptodate)                                     ///< 当前内存与硬盘一致则返回 buffer_head，buffer_head里面存储了与硬盘映射后的内存。
         return bh;
     brelse(bh);                                             ///< 读取失败，释放缓冲区

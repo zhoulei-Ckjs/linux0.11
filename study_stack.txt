@@ -1,0 +1,10 @@
+1/1662		79		21
+
+namei.c:80:118
+namei.c:221:260
+namei.c:274:280
+namei.c:327:340
+fs/open.c:133:156
+lib/open.c:5:14
+main.c:173:178
+main.c:109:144

@@ -91,16 +91,20 @@ struct task_struct
     int exit_code;
     unsigned long start_code,end_code,end_data,brk,start_stack;
     long pid,father,pgrp,session,leader;
-    unsigned short uid,euid,suid;
-    unsigned short gid,egid,sgid;
+    unsigned short uid;         ///< 启动该进程的实际用户，用于系统记账、日志记录、邮件归属等，不参与权限检查。
+    unsigned short euid;        ///< 内核进行权限检查的用户。
+    unsigned short suid;        ///< 记录 euid 的“备份值”。
+    unsigned short gid;         ///< 进程启动者所属的 主组。用于系统记账、日志记录、文件归属标识。
+    unsigned short egid;        ///< 内核进行组权限检查的实际依据。决定进程能否访问“组权限”受控的文件或设备。
+    unsigned short sgid;        ///< egid 的备份值。允许 setgid 程序临时降权后恢复原始组特权。
     long alarm;    ///< 设置闹钟
     long utime,stime,cutime,cstime,start_time;
     unsigned short used_math;
 /* file system info */
     int tty;        /* -1 if no tty, so it must be signed */
-    unsigned short umask;       ///< 用户文件创建模式掩码。用于控制当前进程新建文件或目录时的默认权限。
-    struct m_inode * pwd;       ///< 进程的当前目录的inode。
-    struct m_inode * root;      ///< 进程的根目录。
+    unsigned short umask;       ///< 权限屏蔽字，它指定了在创建文件时必须被关闭的权限位。
+    struct m_inode * pwd;       ///< 进程的当前工作目录的inode。
+    struct m_inode * root;      ///< 进程的根目录（/目录）。
     struct m_inode * executable;
     unsigned long close_on_exec;    ///< 文件描述符关闭标志，为每个进程的每个文件描述符（fd）提供一个开关，决定在执行exec系统调用时是否要自动关闭该文件描述符。
     struct file * filp[NR_OPEN];    ///< 当前进程打开文件指针

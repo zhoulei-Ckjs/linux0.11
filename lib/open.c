@@ -12,7 +12,7 @@ int open(const char * filename, int flag, ...)
 		:"=a" (res)
 		:"0" (__NR_open),"b" (filename),"c" (flag),
 		"d" (va_arg(arg, int)));		///< sys_open
-	if (res>=0)
+	if (res >= 0)
 		return res;
 	errno = -res;
 	return -1;
