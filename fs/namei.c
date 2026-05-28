@@ -79,7 +79,7 @@ static int match(int len,const char * name,struct dir_entry * de)
 /// dir当前目录，name = dev/tty0，namelen = 3
 static struct buffer_head * find_entry(struct m_inode ** dir, const char * name, int namelen, struct dir_entry ** res_dir) 
 {
-    int entries;
+    int entries;        ///< 用于辅助统计当前目录有多少目录项，即有多少文件
     int block,i;
     struct buffer_head * bh;
     struct dir_entry * de;
@@ -119,12 +119,14 @@ static struct buffer_head * find_entry(struct m_inode ** dir, const char * name,
         return NULL;
     i = 0;
     de = (struct dir_entry *) bh->b_data;
-    while (i < entries) {
-        if ((char *)de >= BLOCK_SIZE+bh->b_data) {
-            brelse(bh);
+    while (i < entries) 
+    {
+        if ((char *)de >= BLOCK_SIZE + bh->b_data)  ///< 如果超出了数据块的容量。
+        {
+            brelse(bh);                         ///< 释放数据块
             bh = NULL;
-            if (!(block = bmap(*dir,i/DIR_ENTRIES_PER_BLOCK)) ||
-                !(bh = bread((*dir)->i_dev,block))) {
+            if (!(block = bmap(*dir, i/DIR_ENTRIES_PER_BLOCK)) || !(bh = bread((*dir)->i_dev, block))) 
+            {
                 i += DIR_ENTRIES_PER_BLOCK;
                 continue;
             }

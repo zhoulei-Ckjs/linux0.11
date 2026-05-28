@@ -1,6 +1,10 @@
-1/1662		79		21
+11/1663		80		20
 
-namei.c:80:118
+
+bitmap.c:91:102
+inode.c:89:103
+inode.c:157:159
+namei.c:80:128
 namei.c:221:260
 namei.c:274:280
 namei.c:327:340

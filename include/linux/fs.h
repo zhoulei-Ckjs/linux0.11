@@ -84,16 +84,19 @@ struct buffer_head
     struct buffer_head * b_next_free;
 };
 
-/* 硬盘 inode */
+/**
+ * @brief inode 在硬盘中的存储格式
+ */
 struct d_inode 
 {
-    unsigned short i_mode;        ///< 文件类型和权限
-    unsigned short i_uid;        ///< 所有者用户 ID
-    unsigned long i_size;        ///< 文件大小（字节）
-    unsigned long i_time;        ///< 最后修改时间
-    unsigned char i_gid;        ///< 所属组 ID
-    unsigned char i_nlinks;        ///< 硬链接数，当减小为0时，会删除
-    unsigned short i_zone[9];    ///< 数据块指针数组
+    unsigned short i_mode;          ///< 文件类型和权限
+    unsigned short i_uid;           ///< 所有者用户 ID
+    unsigned long i_size;           ///< 文件大小（字节）
+    unsigned long i_time;           ///< 最后修改时间
+    unsigned char i_gid;            ///< 所属组 ID
+    unsigned char i_nlinks;         ///< 硬链接数，当减小为0时，会删除
+    unsigned short i_zone[9];       ///< 数据块指针，指向文件实际数据存储的物理块号，前 7 个直接指针，第 8 个为一级指针，第 9 个为二级指针。
+                                    ///< 如果是块设备，则 i_zone[0] 存储了设备号。
 };
 
 /**
@@ -159,7 +162,7 @@ struct super_block
                                         ///< 当创建新文件时，文件系统会扫描 inode 位图，找到第一个空闲位，将其置为 1，分配对应的 inode；
                                         ///< 删除文件时，将对应位清 0，释放 inode。
 
-    struct buffer_head * s_zmap[8];     ///< 数据块位图在内存中的缓冲，一个磁盘块用 1 bit 表示，一个 buffer_head 有 1024 Bytes，能表示 8192 个磁盘块占用情况。
+    struct buffer_head * s_zmap[8];     ///< 磁盘块占用情况。一个磁盘块用 1 bit 表示，一个 buffer_head 有 1024 Bytes，能表示 8192 个磁盘块占用情况。
                                         ///< 这样这个数组能表示 8192 * 8 个数据块，一个块大小为 1K。总共能表示 8192 * 8 * 1024 = 64 Mb。
 
     unsigned short s_dev;               ///< 该超级块对应的设备号（0x0301=/dev/hda1）
