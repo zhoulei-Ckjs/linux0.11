@@ -216,9 +216,10 @@ struct buffer_head * get_hash_table(int dev, int block)
 }
 
 /**
- * @ brief 获取一个空闲链表头，如果当前块在 hash_table 里，则直接返回这个块；
+ * @brief 获取一个空闲链表头，如果当前块在 hash_table 里，则直接返回这个块；
  * 如果不在 hash_table 里，从空闲链表里找到一块，如果这个块被占用，则同步磁盘进行释放。
  * 将这个块插入 hash_table。
+ * @note 获取到的 buffer_head->b_data 已经在 buffer_init 中分配了。
  */
 #define BADNESS(bh) (((bh)->b_dirt<<1)+(bh)->b_lock)
 struct buffer_head * getblk(int dev, int block)

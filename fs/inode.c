@@ -86,7 +86,9 @@ void sync_inodes(void)
 
 /// @param inode 文件
 /// @param block 数据块号
-static int _bmap(struct m_inode * inode,int block,int create)
+/// @param create 数据块创建标识
+/// @brief 获取 inode 的数据块（物理磁盘块号）
+static int _bmap(struct m_inode * inode, int block, int create)
 {
     struct buffer_head * bh;
     int i;
@@ -100,15 +102,16 @@ static int _bmap(struct m_inode * inode,int block,int create)
     if (block < 7)
     {
         if (create && !inode->i_zone[block])    /// 拥有 create 标志，并且数据块不存在
-            if (inode->i_zone[block] = new_block(inode->i_dev)) 
+            if (inode->i_zone[block] = new_block(inode->i_dev))     ///< 获取一个空磁盘块给当前 inode
             {
-                inode->i_ctime=CURRENT_TIME;
-                inode->i_dirt=1;
+                inode->i_ctime = CURRENT_TIME;      ///< 文件修改时间
+                inode->i_dirt = 1;      ///< 标记当前 inode 为脏
             }
-        return inode->i_zone[block];
+        return inode->i_zone[block];        ///< 返回直接数据块
     }
     block -= 7;
-    if (block<512) {
+    if (block < 512)
+    {
         if (create && !inode->i_zone[7])
             if (inode->i_zone[7]=new_block(inode->i_dev)) {
                 inode->i_dirt=1;
@@ -158,8 +161,11 @@ static int _bmap(struct m_inode * inode,int block,int create)
     return i;
 }
 
-/// @param inode 文件
-/// @param block 数据块号
+/**
+ * @brief 获取 inode->i_zone[block] 物理块号。
+ * @param inode 文件
+ * @param block 数据块号
+ */
 int bmap(struct m_inode * inode, int block)
 {
     return _bmap(inode, block, 0);

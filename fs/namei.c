@@ -125,7 +125,7 @@ static struct buffer_head * find_entry(struct m_inode ** dir, const char * name,
         {
             brelse(bh);                         ///< 释放数据块
             bh = NULL;
-            if (!(block = bmap(*dir, i/DIR_ENTRIES_PER_BLOCK)) || !(bh = bread((*dir)->i_dev, block))) 
+            if (!(block = bmap(*dir, i/DIR_ENTRIES_PER_BLOCK)) || !(bh = bread((*dir)->i_dev, block)))
             {
                 i += DIR_ENTRIES_PER_BLOCK;
                 continue;

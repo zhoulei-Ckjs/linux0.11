@@ -96,6 +96,10 @@ void free_block(int dev, int block)
     sb->s_zmap[block/8192]->b_dirt = 1; ///< 标记 s_zmap[block/8192] 对应的 buffer_head 为脏，表明需要同步。
 }
 
+/**
+ * @brief 获取一块空闲的磁盘块，设置占用标记，清空磁盘块（1KB）。
+ * @return 磁盘块编号
+ */
 int new_block(int dev)
 {
     struct buffer_head * bh;
@@ -119,14 +123,15 @@ int new_block(int dev)
     if (j >= sb->s_nzones)      ///< 数据块块号数不能超过磁盘总块数。
         return 0;
 
-    if (!(bh = getblk(dev, j)))
+    /// 进行磁盘清空
+    if (!(bh = getblk(dev, j)))     ///< 获取内存块
         panic("new_block: cannot get block");
     if (bh->b_count != 1)
         panic("new block: count is != 1");
-    clear_block(bh->b_data);
+    clear_block(bh->b_data);        ///< 清空 buffer
     bh->b_uptodate = 1;
-    bh->b_dirt = 1;
-    brelse(bh);
+    bh->b_dirt = 1;     ///< 需要同步清空磁盘块
+    brelse(bh);         ///< 进行磁盘同步
     return j;
 }
 
