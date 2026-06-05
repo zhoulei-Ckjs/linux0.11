@@ -41,12 +41,12 @@ void buffer_init(long buffer_end);
 #define SUPER_MAGIC 0x137F
 
 #define NR_OPEN 20
-#define NR_INODE 32     /* 内存中 inode 只有32个，文件系统中远远超过这个数字 */
+#define NR_INODE 32         /* 内存中 inode 只有32个，文件系统中远远超过这个数字 */
 #define NR_FILE 64
-#define NR_SUPER 8        /* 可以容纳 8 个已挂载文件系统的超级块 */
+#define NR_SUPER 8          /* 可以容纳 8 个已挂载文件系统的超级块 */
 #define NR_HASH 307
 #define NR_BUFFERS nr_buffers
-#define BLOCK_SIZE 1024
+#define BLOCK_SIZE 1024     /* 1KB */
 #define BLOCK_SIZE_BITS 10
 #ifndef NULL
 #define NULL ((void *) 0)

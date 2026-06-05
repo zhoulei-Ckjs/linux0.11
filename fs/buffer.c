@@ -182,7 +182,9 @@ static inline void insert_into_queues(struct buffer_head * bh)
     bh->b_next->b_prev = bh;
 }
 
-/* 从 hash 桶中寻找对应设备 dev 的对应块 block，找到了则返回这个内存，找不到返回 NULL */
+/**
+ * @brief 从 hash 桶中寻找对应设备 dev 的对应块 block，找到了则返回这个内存，找不到返回 NULL
+ */
 static struct buffer_head * find_buffer(int dev, int block)
 {
     struct buffer_head * tmp;
@@ -219,7 +221,7 @@ struct buffer_head * get_hash_table(int dev, int block)
  * 将这个块插入 hash_table。
  */
 #define BADNESS(bh) (((bh)->b_dirt<<1)+(bh)->b_lock)
-struct buffer_head * getblk(int dev,int block)
+struct buffer_head * getblk(int dev, int block)
 {
     struct buffer_head * tmp, * bh;
 
@@ -250,9 +252,9 @@ repeat:
 
     /// 走到这里有两种情况。
     /// 第一种情况：找到了一块干净的 buffer_head，即 b_dirt 和 b_lock 都为 0，这是最理想的情况。
-    /// 第二种情况：找了一圈没有干净的 buffer_head，说明被用空了，这时由上面的 while 循环可知，bh=free_list，
-    ///             即拿到了最久的 buffer_head，因为free_list是尾插法（新用一块就插入 free_list 末尾）
-    ///             这个时候就需要将这个内存同步到对应的磁盘中再拿来用了。
+    /// 第二种情况：找了一圈没有干净的 buffer_head，说明被用空了，这时由上面的 while 循环可知，bh = free_list，
+    ///            即拿到了最久的 buffer_head，因为free_list是尾插法（新用一块就插入 free_list 末尾）
+    ///            这个时候就需要将这个内存同步到对应的磁盘中再拿来用了。
     wait_on_buffer(bh);      ///< 等待 bh 不被锁定。
     if (bh->b_count)         ///< 如果还有人在使用这个内存，重新找。
         goto repeat;

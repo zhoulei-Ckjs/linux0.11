@@ -10,14 +10,20 @@
 #include <linux/sched.h>
 #include <linux/kernel.h>
 
+/**
+ * @brief 清空 1024 字节，设置为 0。
+ */
 #define clear_block(addr) \
 __asm__("cld\n\t" \
     "rep\n\t" \
     "stosl" \
     ::"a" (0),"c" (BLOCK_SIZE/4),"D" ((long) (addr)):"cx","di")
 
+/**
+ * @brief 设置位 addr[nbr] 为 1，返回源 nbr 位的值。
+ */
 #define set_bit(nr,addr) ({\
-register int res __asm__("ax"); \
+register int res __asm__("ax");     /* 请把变量 res 这个 C 语言符号，永远映射到 EAX 寄存器上。 */ \
 __asm__ __volatile__("btsl %2,%3\n\tsetb %%al": \
 "=a" (res):"0" (0),"r" (nr),"m" (*(addr))); \
 res;})
@@ -37,16 +43,16 @@ res;})
  */
 #define find_first_zero(addr) ({ \
 int __res; \
-__asm__("cld\n" \               /* 清零方向标志位 */
-    "1:\tlodsl\n\t" \           /* 从 DS:ESI 处（即 addr 位置）加载 4 字节到 eax。*/
-    "notl %%eax\n\t" \          /* eax 寄存器二进制取反。*/
-    "bsfl %%eax,%%edx\n\t" \    /* 从 eax 中从低到高找第一个 1，索引存入 edx。如果 eax 为 0，则设置 ZF = 1。*/
-    "je 2f\n\t" \               /* ZF == 1 则跳转 2f */
-    "addl %%edx,%%ecx\n\t" \    /* ecx = edx + ecx */
+__asm__("cld\n"             /* 清零方向标志位 */ \
+    "1:\tlodsl\n\t"         /* 从 DS:ESI 处（即 addr 位置）加载 4 字节到 eax。*/ \
+    "notl %%eax\n\t"        /* eax 寄存器二进制取反。*/ \
+    "bsfl %%eax,%%edx\n\t"  /* 从 eax 中从低到高找第一个 1，索引存入 edx。如果 eax 为 0，则设置 ZF = 1。*/ \
+    "je 2f\n\t"             /* ZF == 1 则跳转 2f */ \
+    "addl %%edx,%%ecx\n\t"  /* ecx = edx + ecx */ \
     "jmp 3f\n" \
-    "2:\taddl $32,%%ecx\n\t" \  /* ecx += 32 */
-    "cmpl $8192,%%ecx\n\t" \    /* 若 ecx == 8192，ZF = 1 */
-    "jl 1b\n" \                 /* 若 ecx < 8192，则跳转到 1b */
+    "2:\taddl $32,%%ecx\n\t"    /* ecx += 32 */ \
+    "cmpl $8192,%%ecx\n\t"      /* 若 ecx == 8192，ZF = 1 */ \
+    "jl 1b\n"                   /* 若 ecx < 8192，则跳转到 1b */ \
     "3:" \
     :"=c" (__res):"c" (0),"S" (addr):"ax","dx","si"); \
 __res;})
@@ -96,6 +102,7 @@ int new_block(int dev)
     struct super_block * sb;
     int i,j;
 
+    /// 找到第一块未被占用的磁盘块，设置磁盘标志位，表示此磁盘块被占用
     if (!(sb = get_super(dev)))
         panic("trying to get new block from nonexistant device");
     j = 8192;
@@ -103,15 +110,16 @@ int new_block(int dev)
         if (bh = sb->s_zmap[i])
             if ((j = find_first_zero(bh->b_data)) < 8192)   ///< 根据磁盘标志位，找到第一个未被占用的磁盘块（1KB）。
                 break;
-    if (i>=8 || !bh || j>=8192)
+    if (i >= 8 || !bh || j >= 8192)
         return 0;
-    if (set_bit(j,bh->b_data))
+    if (set_bit(j, bh->b_data))         ///< 设置磁盘标志位，表示此块磁盘已被占用。
         panic("new_block: bit already set");
-    bh->b_dirt = 1;
-    j += i*8192 + sb->s_firstdatazone-1;
-    if (j >= sb->s_nzones)
+    bh->b_dirt = 1;     ///< 数据为脏标记，修改磁盘占用情况后，内存中 s_zmap 与磁盘中不一致了，需要同步磁盘。
+    j += i * 8192 + sb->s_firstdatazone - 1;        ///< 数据块块号。
+    if (j >= sb->s_nzones)      ///< 数据块块号数不能超过磁盘总块数。
         return 0;
-    if (!(bh=getblk(dev,j)))
+
+    if (!(bh = getblk(dev, j)))
         panic("new_block: cannot get block");
     if (bh->b_count != 1)
         panic("new block: count is != 1");
