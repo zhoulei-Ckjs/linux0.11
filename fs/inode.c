@@ -78,7 +78,7 @@ void sync_inodes(void)
     inode = 0 + inode_table;
     for(i = 0; i < NR_INODE; i++,inode++) 
     {
-        wait_on_inode(inode);                    ///< 等待 inode 解除锁定
+        wait_on_inode(inode);                   ///< 等待 inode 解除锁定
         if (inode->i_dirt && !inode->i_pipe)    ///< 管道是个临时内存文件，不需要回写磁盘。
             write_inode(inode);                 ///< 将 inode 写入磁盘的对应内存缓存。
     }
@@ -95,7 +95,7 @@ static int _bmap(struct m_inode * inode, int block, int create)
 
     if (block<0)
         panic("_bmap: block<0");
-    if (block >= 7 + 512 + 512 * 512)       ///< 一个文件最大能存储的数据块。
+    if (block >= 7 + 512 + 512 * 512)           ///< 一个文件最大能存储的数据块。
         panic("_bmap: block>big");
     
     /// 如果是 7 个直接数据块
@@ -104,10 +104,10 @@ static int _bmap(struct m_inode * inode, int block, int create)
         if (create && !inode->i_zone[block])    /// 拥有 create 标志，并且数据块不存在
             if (inode->i_zone[block] = new_block(inode->i_dev))     ///< 获取一个空磁盘块给当前 inode
             {
-                inode->i_ctime = CURRENT_TIME;      ///< 文件修改时间
-                inode->i_dirt = 1;      ///< 标记当前 inode 为脏
+                inode->i_ctime = CURRENT_TIME;  ///< 文件修改时间
+                inode->i_dirt = 1;              ///< 标记当前 inode 为脏
             }
-        return inode->i_zone[block];        ///< 返回直接数据块
+        return inode->i_zone[block];            ///< 返回直接数据块
     }
     block -= 7;
     if (block < 512)

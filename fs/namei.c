@@ -52,23 +52,19 @@ static int permission(struct m_inode * inode, int mask)
     return 0;       ///< 校验不通过
 }
 
-/*
- * ok, we cannot use strncmp, as the name is not in our data space.
- * Thus we'll have to use match. No big problem. Match also makes
- * some sanity tests.
- *
- * NOTE! unlike strncmp, match returns 1 for success, 0 for failure.
- */
-static int match(int len,const char * name,struct dir_entry * de)
+/*name 指向用户空间字符串，strncmp() 会按 DS 段直接访问内存，
+而用户字符串应该通过 FS 段访问，因此不能直接用 strncmp()，
+必须使用 match()，由 match() 利用 FS 段逐字节读取用户空间字符串进行比较。*/
+static int match(int len, const char * name, struct dir_entry * de)
 {
-    register int same __asm__("ax");
+    register int same __asm__("ax");            ///< same 绑定到 EAX
 
     if (!de || !de->inode || len > NAME_LEN)
         return 0;
     if (len < NAME_LEN && de->name[len])
         return 0;
     __asm__("cld\n\t"
-        "fs ; repe ; cmpsb\n\t"
+        "fs ; repe ; cmpsb\n\t"     /* fs 看起来像一条指令，但实际上它不是独立指令，而是 段覆盖前缀（Segment Override Prefix）。*/
         "setz %%al"
         :"=a" (same)
         :"0" (0),"S" ((long) name),"D" ((long) de->name),"c" (len)
@@ -118,21 +114,22 @@ static struct buffer_head * find_entry(struct m_inode ** dir, const char * name,
     if (!(bh = bread((*dir)->i_dev, block)))    ///< 将数据块读取至内存。
         return NULL;
     i = 0;
-    de = (struct dir_entry *) bh->b_data;
+    de = (struct dir_entry *) bh->b_data;       ///< 用 de 去遍历 bh->b_data
     while (i < entries) 
     {
         if ((char *)de >= BLOCK_SIZE + bh->b_data)  ///< 如果超出了数据块的容量。
         {
             brelse(bh);                         ///< 释放数据块
             bh = NULL;
-            if (!(block = bmap(*dir, i/DIR_ENTRIES_PER_BLOCK)) || !(bh = bread((*dir)->i_dev, block)))
+            if (!(block = bmap(*dir, i/DIR_ENTRIES_PER_BLOCK)) || !(bh = bread((*dir)->i_dev, block)))  ///< 目录块不存在或读取磁盘出错
             {
-                i += DIR_ENTRIES_PER_BLOCK;
+                i += DIR_ENTRIES_PER_BLOCK;     ///< 跳过，进入下一块
                 continue;
             }
-            de = (struct dir_entry *) bh->b_data;
+            de = (struct dir_entry *) bh->b_data;   ///< 更新遍历指针
         }
-        if (match(namelen,name,de)) {
+        if (match(namelen, name, de))
+        {
             *res_dir = de;
             return bh;
         }
