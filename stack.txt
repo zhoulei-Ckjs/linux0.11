@@ -1,10 +1,9 @@
-0/1738		84		20
+16/1738		85		20
 
-namei.c:58:67
-namei.c:80:135
-namei.c:221:260
-namei.c:274:280
-namei.c:327:340
+namei.c:79:134
+namei.c:213:252
+namei.c:266:272
+namei.c:319:332
 fs/open.c:133:156
 lib/open.c:5:14
 main.c:173:178

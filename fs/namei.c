@@ -52,9 +52,12 @@ static int permission(struct m_inode * inode, int mask)
     return 0;       ///< 校验不通过
 }
 
-/*name 指向用户空间字符串，strncmp() 会按 DS 段直接访问内存，
-而用户字符串应该通过 FS 段访问，因此不能直接用 strncmp()，
-必须使用 match()，由 match() 利用 FS 段逐字节读取用户空间字符串进行比较。*/
+/**
+ * @brief 比较字符串name和dir_entry->name是否相等
+ * @retval 1: 字符串相等
+ * @retval 0: 不相等
+ * @note name为指向用户空间字符串，strncmp() 会按 DS 段直接访问内存，而用户字符串应该通过 FS 段访问，因此不能直接用 strncmp()，必须使用 match()，由 match() 利用 FS 段逐字节读取用户空间字符串进行比较。
+ */
 static int match(int len, const char * name, struct dir_entry * de)
 {
     register int same __asm__("ax");            ///< same 绑定到 EAX
@@ -64,7 +67,7 @@ static int match(int len, const char * name, struct dir_entry * de)
     if (len < NAME_LEN && de->name[len])
         return 0;
     __asm__("cld\n\t"
-        "fs ; repe ; cmpsb\n\t"     /* fs 看起来像一条指令，但实际上它不是独立指令，而是 段覆盖前缀（Segment Override Prefix）。*/
+        "fs ; repe ; cmpsb\n\t"     /* 重复执行ecx次比较fs:esi vs es:edi，如果不同，则设置ZF=0，结束循环；如果相等，则设置ZF=1，继续向下比较（esi++,edi++）。*/
         "setz %%al"
         :"=a" (same)
         :"0" (0),"S" ((long) name),"D" ((long) de->name),"c" (len)
