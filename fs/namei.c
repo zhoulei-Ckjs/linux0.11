@@ -1,13 +1,3 @@
-/*
- *  linux/fs/namei.c
- *
- *  (C) 1991  Linus Torvalds
- */
-
-/*
- * Some corrections by tytso.
- */
-
 #include <linux/sched.h>
 #include <linux/kernel.h>
 #include <asm/segment.h>
@@ -75,7 +65,13 @@ static int match(int len, const char * name, struct dir_entry * de)
     return same;
 }
 
-/// dir当前目录，name = dev/tty0，namelen = 3
+/**
+ * @brief 找到当前目录 dir 的子目录
+ * @param dir 当前目录
+ * @param name 为当前目录下的文件相对路径，如 name = dev/tty0，namelen = 3，则寻找当前目录下的 dev 目录。
+ * @param res_dir 找到的目录
+ * @return 返回包含当前子目录的页面 buffer_head
+ */
 static struct buffer_head * find_entry(struct m_inode ** dir, const char * name, int namelen, struct dir_entry ** res_dir) 
 {
     int entries;        ///< 用于辅助统计当前目录有多少目录项，即有多少文件
@@ -118,23 +114,25 @@ static struct buffer_head * find_entry(struct m_inode ** dir, const char * name,
         return NULL;
     i = 0;
     de = (struct dir_entry *) bh->b_data;       ///< 用 de 去遍历 bh->b_data
-    while (i < entries) 
+
+    /// 在当前目录下寻找子文件夹的目录项，如 name = dev/tty0，则寻找 dev 目录项。
+    while (i < entries)
     {
         if ((char *)de >= BLOCK_SIZE + bh->b_data)  ///< 如果超出了数据块的容量。
         {
-            brelse(bh);                         ///< 释放数据块
+            brelse(bh);                             ///< 释放数据块
             bh = NULL;
             if (!(block = bmap(*dir, i/DIR_ENTRIES_PER_BLOCK)) || !(bh = bread((*dir)->i_dev, block)))  ///< 目录块不存在或读取磁盘出错
             {
-                i += DIR_ENTRIES_PER_BLOCK;     ///< 跳过，进入下一块
+                i += DIR_ENTRIES_PER_BLOCK;         ///< 跳过，进入下一块
                 continue;
             }
             de = (struct dir_entry *) bh->b_data;   ///< 更新遍历指针
         }
         if (match(namelen, name, de))
         {
-            *res_dir = de;
-            return bh;
+            *res_dir = de;                          ///< 找到了目录项
+            return bh;                              ///< 返回包含当前子目录的页面
         }
         de++;
         i++;
@@ -210,6 +208,7 @@ static struct buffer_head * add_entry(struct m_inode * dir,
     return NULL;
 }
 
+/// @retval NULL: 没找到文件
 static struct m_inode * get_dir(const char * pathname)      ///< pathname = /dev/tty0
 {
     char c;
@@ -249,7 +248,7 @@ static struct m_inode * get_dir(const char * pathname)      ///< pathname = /dev
             /* nothing */ ;
         if (!c)     ///< 如果到达文件末尾，返回找到的inode。
             return inode;
-        if (!(bh = find_entry(&inode, thisname, namelen, &de)))         ///< inode为root或者当前工作目录，pathname = dev/tty0, namelen = 3
+        if (!(bh = find_entry(&inode, thisname, namelen, &de)))         ///< inode 为 root 或者当前工作目录，pathname = dev/tty0, namelen = 3
         {
             iput(inode);
             return NULL;
