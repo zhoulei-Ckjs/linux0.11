@@ -8,7 +8,7 @@
 #define O_RDONLY	   00
 #define O_WRONLY	   01
 #define O_RDWR		   02	/* 读写权限 */
-#define O_CREAT		00100	/* not fcntl */
+#define O_CREAT		00100	/* 创建，not fcntl */
 #define O_EXCL		00200	/* not fcntl */
 #define O_NOCTTY	00400	/* not fcntl */
 #define O_TRUNC		01000	/* 截断 */

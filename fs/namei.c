@@ -66,10 +66,10 @@ static int match(int len, const char * name, struct dir_entry * de)
 }
 
 /**
- * @brief 找到当前目录 dir 的子目录
+ * @brief 找到当前目录 dir 下的子目录或文件
  * @param dir 当前目录
  * @param name 为当前目录下的文件相对路径，如 name = dev/tty0，namelen = 3，则寻找当前目录下的 dev 目录。
- * @param res_dir 找到的目录
+ * @param res_dir 找到的目录或文件
  * @return 返回包含当前子目录的页面 buffer_head
  */
 static struct buffer_head * find_entry(struct m_inode ** dir, const char * name, int namelen, struct dir_entry ** res_dir) 
@@ -208,14 +208,19 @@ static struct buffer_head * add_entry(struct m_inode * dir,
     return NULL;
 }
 
-/// @retval NULL: 没找到文件
-static struct m_inode * get_dir(const char * pathname)      ///< pathname = /dev/tty0
+/**
+ * @brief 获取文件的所属文件夹的 inode。
+ * @param pathname 文件名，如/dev/tty0
+ * @return 文件夹 inode。
+ * @retval NULL: 出错了
+ */
+static struct m_inode * get_dir(const char * pathname)  ///< pathname = /dev/tty0
 {
     char c;
     const char * thisname;
     struct m_inode * inode;
     struct buffer_head * bh;
-    int namelen,inr,idev;
+    int namelen, inr, idev;
     struct dir_entry * de;
 
     if (!current->root || !current->root->i_count)      ///< 系统根目录
@@ -236,19 +241,20 @@ static struct m_inode * get_dir(const char * pathname)      ///< pathname = /dev
     while (1) 
     {
         thisname = pathname;
-        if (!S_ISDIR(inode->i_mode) || !permission(inode, MAY_EXEC))    ///< 如果不是目录 或者 不具备可执行或可搜索权限
+        if (!S_ISDIR(inode->i_mode) || !permission(inode, MAY_EXEC))    ///< 如果不是目录 或者 不具备可执行或可搜索权限，目录没有“执行”的概念，它的 x 权限实际代表 search（搜索/遍历）权限
+            ///< 有 x 权限：可以 cd 进入该目录，或访问该目录下的子文件/子目录（即使没有 r 权限）
         {
             iput(inode);    /* 释放 inode */
             return NULL;
         }
 
-        /// 走到这里代表满足pathname是目录且具备可搜索权限。
+        /// 走到这里代表满足 pathname 是目录且具备可搜索权限。
 
-        for(namelen = 0; (c = get_fs_byte(pathname++)) && (c != '/'); namelen++)
+        for(namelen = 0; (c = get_fs_byte(pathname++)) && (c != '/'); namelen++)    ///< 如 dev/tty0，跳过 dev，此时 pathname = tty0，namelen = 3
             /* nothing */ ;
-        if (!c)     ///< 如果到达文件末尾，返回找到的inode。
+        if (!c)     ///< 如果到达文件末尾，返回找到的inode（当找到文件名时，如 tty0，由上面的 for 循环可知，c 为遍历的最后一位即 \0，此时inode即为文件夹 dev 的 inode）。
             return inode;
-        if (!(bh = find_entry(&inode, thisname, namelen, &de)))         ///< inode 为 root 或者当前工作目录，pathname = dev/tty0, namelen = 3
+        if (!(bh = find_entry(&inode, thisname, namelen, &de)))         ///< inode 为 root 或者当前工作目录，thisname = dev/tty0, namelen = 3，此时为寻找 dev 文件夹的 inode
         {
             iput(inode);
             return NULL;
@@ -257,24 +263,30 @@ static struct m_inode * get_dir(const char * pathname)      ///< pathname = /dev
         idev = inode->i_dev;
         brelse(bh);
         iput(inode);
-        if (!(inode = iget(idev,inr)))
+        if (!(inode = iget(idev, inr)))                 ///< 递归寻找 inode，这里是获取子目录的 inode。
             return NULL;
     }
 }
 
+/**
+ * @brief 获取文件 inode、文件名、文件长度
+ * @param namelen 文件名长度（去掉文件夹路径后的文件名长度）
+ * @param name 文件名（不含文件路径）
+ * @return 目标文件的 inode
+ */
 static struct m_inode * dir_namei(const char * pathname, int * namelen, const char ** name)     ///< pathname = /dev/tty0
 {
     char c;
     const char * basename;
     struct m_inode * dir;
 
-    if (!(dir = get_dir(pathname)))
+    if (!(dir = get_dir(pathname)))                     ///< 获取文件 inode。
         return NULL;
     basename = pathname;
-    while (c=get_fs_byte(pathname++))
-        if (c=='/')
-            basename=pathname;
-    *namelen = pathname-basename-1;
+    while (c = get_fs_byte(pathname++))
+        if (c == '/')
+            basename = pathname;                        ///< 若pathname = /dev/tty0，则 basename = tty0
+    *namelen = pathname - basename - 1;                 ///< 计算文件名长度（去掉文件夹路径）
     *name = basename;
     return dir;
 }
@@ -315,6 +327,8 @@ struct m_inode * namei(const char * pathname)
     return dir;
 }
 
+/// @param res_inode 输出参数，待打开文件的 inode，
+/// @retval 0: 成功
 int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_inode)      ///< pathname = /dev/tty0
 {
     const char * basename;
@@ -328,27 +342,35 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
 
     mode &= 0777 & ~current->umask;                 ///< 去掉权限屏蔽字
     mode |= I_REGULAR;                              ///< 这是一个普通文件
-    if (!(dir = dir_namei(pathname, &namelen, &basename)))
+    if (!(dir = dir_namei(pathname, &namelen, &basename)))      ///< 获取文件所属文件夹 inode、文件名长度、文件名。（都是去掉路径后的），dir = 待打开文件的所属文件夹的 inode。
         return -ENOENT;
-    if (!namelen) {            /* special case: '/usr/' etc */
-        if (!(flag & (O_ACCMODE|O_CREAT|O_TRUNC))) {
-            *res_inode=dir;
+    if (!namelen)                                   /* special case: '/usr/' etc */
+    {
+        if (!(flag & (O_ACCMODE | O_CREAT | O_TRUNC)))      ///< 不是读写/创建/截断
+        {
+            *res_inode = dir;                       ///< 将获取到的文件 inode 返回。
             return 0;
         }
         iput(dir);
-        return -EISDIR;
+        return -EISDIR;                             ///< 报文件夹错误
     }
-    bh = find_entry(&dir,basename,namelen,&de);
-    if (!bh) {
-        if (!(flag & O_CREAT)) {
+    bh = find_entry(&dir, basename, namelen, &de);  ///< 找到目标文件的 inode。dir 为 tty0 所属文件夹 dev 的 inode, basename = tty0, namelen = 4
+
+    /// 找不到该文件的 inode
+    if (!bh)
+    {
+        /// 文件 inode 找不到，又不具备创建/写权限，那就按错误处理
+        if (!(flag & O_CREAT)) 
+        {
             iput(dir);
             return -ENOENT;
         }
-        if (!permission(dir,MAY_WRITE)) {
+        if (!permission(dir, MAY_WRITE)) 
+        {
             iput(dir);
             return -EACCES;
         }
-        inode = new_inode(dir->i_dev);
+        inode = new_inode(dir->i_dev);              ///< 创建一个新的 indoe。
         if (!inode) {
             iput(dir);
             return -ENOSPC;

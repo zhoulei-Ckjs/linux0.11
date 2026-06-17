@@ -192,7 +192,7 @@ struct d_super_block {
  */
 struct dir_entry
 {
-    unsigned short inode;       ///< 索引节点编号。指向该文件名对应的实际文件/目录的inode号。
+    unsigned short inode;       ///< 索引节点编号。
     char name[NAME_LEN];        ///< 文件名。固定长度字符数组。
 };
 
