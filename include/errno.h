@@ -44,7 +44,7 @@ extern int errno;
 #define ENOTTY      25
 #define ETXTBSY     26
 #define EFBIG       27
-#define ENOSPC      28
+#define ENOSPC      28	/* No space left on device，设备上没有剩余空间 */
 #define ESPIPE      29
 #define EROFS       30
 #define EMLINK      31

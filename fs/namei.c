@@ -69,7 +69,7 @@ static int match(int len, const char * name, struct dir_entry * de)
  * @brief 找到当前目录 dir 下的子目录或文件
  * @param dir 当前目录
  * @param name 为当前目录下的文件相对路径，如 name = dev/tty0，namelen = 3，则寻找当前目录下的 dev 目录。
- * @param res_dir 找到的目录或文件
+ * @param res_dir 输出参数，找到的目录或文件
  * @return 返回包含当前子目录的页面 buffer_head
  */
 static struct buffer_head * find_entry(struct m_inode ** dir, const char * name, int namelen, struct dir_entry ** res_dir) 
@@ -151,10 +151,9 @@ static struct buffer_head * find_entry(struct m_inode ** dir, const char * name,
  * may not sleep between calling this and putting something into
  * the entry, as someone else might have used it while you slept.
  */
-static struct buffer_head * add_entry(struct m_inode * dir,
-    const char * name, int namelen, struct dir_entry ** res_dir)
+static struct buffer_head * add_entry(struct m_inode * dir, const char * name, int namelen, struct dir_entry ** res_dir)    ///< dir = tty0 所属文件夹 dev 的 inode; basename = tty0; namelen = 4
 {
-    int block,i;
+    int block, i;
     struct buffer_head * bh;
     struct dir_entry * de;
 
@@ -169,19 +168,22 @@ static struct buffer_head * add_entry(struct m_inode * dir,
     if (!namelen)
         return NULL;
     if (!(block = dir->i_zone[0]))
-        return NULL;
-    if (!(bh = bread(dir->i_dev,block)))
+        return NULL;                                ///< 空文件/目录
+    if (!(bh = bread(dir->i_dev, block)))
         return NULL;
     i = 0;
     de = (struct dir_entry *) bh->b_data;
-    while (1) {
-        if ((char *)de >= BLOCK_SIZE+bh->b_data) {
+    while (1) 
+    {
+        if ((char *)de >= BLOCK_SIZE + bh->b_data)      ///< 如果超出了数据块容量
+        {
             brelse(bh);
             bh = NULL;
-            block = create_block(dir,i/DIR_ENTRIES_PER_BLOCK);
+            block = create_block(dir, i/DIR_ENTRIES_PER_BLOCK);
             if (!block)
                 return NULL;
-            if (!(bh = bread(dir->i_dev,block))) {
+            if (!(bh = bread(dir->i_dev, block))) 
+            {
                 i += DIR_ENTRIES_PER_BLOCK;
                 continue;
             }
@@ -371,14 +373,15 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
             return -EACCES;
         }
         inode = new_inode(dir->i_dev);              ///< 创建一个新的 indoe。
-        if (!inode) {
+        if (!inode) 
+        {
             iput(dir);
-            return -ENOSPC;
+            return -ENOSPC;                         ///< 设备上没有剩余空间。
         }
         inode->i_uid = current->euid;
         inode->i_mode = mode;
         inode->i_dirt = 1;
-        bh = add_entry(dir,basename,namelen,&de);
+        bh = add_entry(dir, basename, namelen, &de);    ///< dir = tty0 所属文件夹 dev 的 inode; basename = tty0; namelen = 4
         if (!bh) {
             inode->i_nlinks--;
             iput(inode);

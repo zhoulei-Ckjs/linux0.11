@@ -1,7 +1,8 @@
-0/1975		89		22
+1/1975		90		21
 
-bitmap.c:167:181
-namei.c:332:373
+inode.c:185:187
+namei.c:154:182
+namei.c:332:381
 fs/open.c:133:156
 lib/open.c:5:14
 main.c:173:178

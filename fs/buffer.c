@@ -301,7 +301,7 @@ void brelse(struct buffer_head * buf)
 
 /**
  * @brief 读取一个特定的块到缓冲区中，即读取到 buffer_head->b_data 中，并且返回这个缓冲区 buffer_head
- （过程为同步等待，如果没读取完则睡眠在此函数上，硬盘异步读取，硬盘完成读取后会出发 IRQ14 中断，触发调用 read_intr 来完成硬盘读取）。
+ （过程为同步等待，如果没读取完则睡眠在此函数上，硬盘异步读取，硬盘完成读取后会触发 IRQ14 中断，触发调用 read_intr 来完成硬盘读取）。
  * @details 会等待读取完成，读取块大小为 512 * 2 = 1K。
  * @return 如果无法读取，返回 NULL。（第一次读取了 MBR，第二次读取了 0x306）。
  */

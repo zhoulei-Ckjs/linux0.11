@@ -164,6 +164,11 @@ void free_inode(struct m_inode * inode)
     memset(inode,0,sizeof(*inode));
 }
 
+/**
+ * @brief 申请新的 inode。
+ * @param dev 设备号
+ * @detail 从设备上找到第一个空闲的 inode，通过设备号获取超级块然后访问超级块的 inode 位图，进而找到第一个 inode。
+ */
 struct m_inode * new_inode(int dev)
 {
     struct m_inode * inode;
@@ -176,24 +181,26 @@ struct m_inode * new_inode(int dev)
     if (!(sb = get_super(dev)))             ///< 获取代表分区的超级块
         panic("new_inode with unknown device");
     j = 8192;
+    /// 找到第一个空闲的 inode
     for (i = 0; i < 8; i++)
         if (bh = sb->s_imap[i])
             if ((j = find_first_zero(bh->b_data)) < 8192)
                 break;
-    if (!bh || j >= 8192 || j+i*8192 > sb->s_ninodes) {
+    if (!bh || j >= 8192 || j + i*8192 > sb->s_ninodes) 
+    {
         iput(inode);
         return NULL;
     }
-    if (set_bit(j,bh->b_data))
+    if (set_bit(j, bh->b_data))
         panic("new_inode: bit already set");
-    bh->b_dirt = 1;
-    inode->i_count=1;
-    inode->i_nlinks=1;
-    inode->i_dev=dev;
-    inode->i_uid=current->euid;
-    inode->i_gid=current->egid;
-    inode->i_dirt=1;
-    inode->i_num = j + i*8192;
+    bh->b_dirt = 1;                         ///< inode 位图需要同步到磁盘
+    inode->i_count = 1;
+    inode->i_nlinks = 1;
+    inode->i_dev = dev;
+    inode->i_uid = current->euid;
+    inode->i_gid = current->egid;
+    inode->i_dirt = 1;
+    inode->i_num = j + i * 8192;
     inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
     return inode;
 }
