@@ -1,9 +1,3 @@
-/*
- *  linux/fs/inode.c
- *
- *  (C) 1991  Linus Torvalds
- */
-
 #include <string.h>
 #include <sys/stat.h>
 
@@ -85,7 +79,7 @@ void sync_inodes(void)
 }
 
 /**
- * @brief 获取 inode 的数据块（物理磁盘块号），实际上求的为 inode->i_zone[block]，依据 create 标识，决定是否在文件块不存在时分配一个。
+ * @brief 获取 inode 的数据块（物理磁盘块号），实际上求的是 inode->i_zone[block]，依据 create 标识，决定是否在文件块不存在时分配一个。
  * @param inode 文件
  * @param block 数据块号，实际上求的为 inode->i_zone[block]。
  * @param create 数据块创建标识
@@ -182,6 +176,11 @@ int bmap(struct m_inode * inode, int block)
     return _bmap(inode, block, 0);
 }
 
+/**
+ * @brief create_block 是多个行为的合一，如果页 i/DIR_ENTRIES_PER_BLOCK 对应的 block 不存在，则创建；如果存在，则直接返回这个 block。
+ * @param inode 文件
+ * @param block 数据块号
+ */
 int create_block(struct m_inode * inode, int block)
 {
     return _bmap(inode, block, 1);

@@ -1,8 +1,7 @@
-1/1975		90		21
+4/1976		91		21
 
-inode.c:185:187
-namei.c:154:182
-namei.c:332:381
+namei.c:155:183
+namei.c:334:384
 fs/open.c:133:156
 lib/open.c:5:14
 main.c:173:178

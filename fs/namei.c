@@ -151,10 +151,11 @@ static struct buffer_head * find_entry(struct m_inode ** dir, const char * name,
  * may not sleep between calling this and putting something into
  * the entry, as someone else might have used it while you slept.
  */
+// @details 目录项的 inode 仍然为0，add_entry 不负责填写 inode，只负责填写目录项名
 static struct buffer_head * add_entry(struct m_inode * dir, const char * name, int namelen, struct dir_entry ** res_dir)    ///< dir = tty0 所属文件夹 dev 的 inode; basename = tty0; namelen = 4
 {
     int block, i;
-    struct buffer_head * bh;
+    struct buffer_head * bh;    ///< 存储将要添加的目录项所在的内存页
     struct dir_entry * de;
 
     *res_dir = NULL;
@@ -169,7 +170,7 @@ static struct buffer_head * add_entry(struct m_inode * dir, const char * name, i
         return NULL;
     if (!(block = dir->i_zone[0]))
         return NULL;                                ///< 空文件/目录
-    if (!(bh = bread(dir->i_dev, block)))
+    if (!(bh = bread(dir->i_dev, block)))           ///< 数据块读取失败
         return NULL;
     i = 0;
     de = (struct dir_entry *) bh->b_data;
@@ -179,7 +180,7 @@ static struct buffer_head * add_entry(struct m_inode * dir, const char * name, i
         {
             brelse(bh);
             bh = NULL;
-            block = create_block(dir, i/DIR_ENTRIES_PER_BLOCK);
+            block = create_block(dir, i/DIR_ENTRIES_PER_BLOCK);     ///< create_block 对多个行为合一，如果页 i/DIR_ENTRIES_PER_BLOCK 对应的 block 不存在，则创建；如果存在，则直接返回这个 block。
             if (!block)
                 return NULL;
             if (!(bh = bread(dir->i_dev, block))) 
@@ -189,16 +190,21 @@ static struct buffer_head * add_entry(struct m_inode * dir, const char * name, i
             }
             de = (struct dir_entry *) bh->b_data;
         }
-        if (i*sizeof(struct dir_entry) >= dir->i_size) {
-            de->inode=0;
-            dir->i_size = (i+1)*sizeof(struct dir_entry);
+        if (i * sizeof(struct dir_entry) >= dir->i_size)    ///< 如果超出了目录项个数，则增加一个目录项
+        {
+            de->inode = 0;
+            dir->i_size = (i + 1) * sizeof(struct dir_entry);
             dir->i_dirt = 1;
             dir->i_ctime = CURRENT_TIME;
         }
-        if (!de->inode) {
+
+        /// 找到了空目录项
+        if (!de->inode)
+        {
             dir->i_mtime = CURRENT_TIME;
-            for (i=0; i < NAME_LEN ; i++)
-                de->name[i]=(i<namelen)?get_fs_byte(name+i):0;
+            /// 存储目录项对应的文件名
+            for (i = 0; i < NAME_LEN ; i++)
+                de->name[i] = (i < namelen) ? get_fs_byte(name + i) : 0;
             bh->b_dirt = 1;
             *res_dir = de;
             return bh;
@@ -206,6 +212,8 @@ static struct buffer_head * add_entry(struct m_inode * dir, const char * name, i
         de++;
         i++;
     }
+
+    /// 走到这里就是异常情况
     brelse(bh);
     return NULL;
 }

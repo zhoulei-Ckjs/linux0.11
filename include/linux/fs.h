@@ -107,13 +107,13 @@ struct m_inode
 {
     unsigned short i_mode;          ///< i_mode 高几位存文件类型，低 9 位存权限（所有者/所属组/其他人）。文件类型，可以为块设备文件、管道、目录、普通文件。
     unsigned short i_uid;           ///< 文件所有者的用户标识符
-    unsigned long i_size;           ///< 如果是文件，则为文件大小；
-                                    ///< 如果是目录，里面存储了dir_entry表，即目录项表。
+    unsigned long i_size;           ///< 如果是文件，则为文件大小，单位：byte。
+                                    ///< 如果是目录，里面存储了 dir_entry 表，即目录项表，单位：byte。
                                     ///< 如果是管道，存储管道缓冲区所在物理内存地址。
     unsigned long i_mtime;          ///< 文件内容最后一次被修改的时间戳
     unsigned char i_gid;            ///< 文件所属组的标识符
     unsigned char i_nlinks;         ///< 硬链接数。
-    unsigned short i_zone[9];       ///< 数据块。文件实际数据存储的物理块号，前 7 个直接数据物理块号，第 8 个为一级指针，第 9 个为二级指针。
+    unsigned short i_zone[9];       ///< 数据块。文件实际存储数据的物理块号，前 7 个直接数据物理块号，第 8 个为一级指针，第 9 个为二级指针。
                                     ///< 如果是块设备，则 i_zone[0] 存储了设备号。
                                     ///< 如果是目录，存储目录项。
 
