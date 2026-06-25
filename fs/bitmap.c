@@ -167,7 +167,7 @@ void free_inode(struct m_inode * inode)
 /**
  * @brief 申请新的 inode。
  * @param dev 设备号
- * @detail 从设备上找到第一个空闲的 inode，通过设备号获取超级块然后访问超级块的 inode 位图，进而找到第一个 inode。
+ * @details 从设备上找到第一个空闲的 inode。通过设备号获取超级块然后访问超级块的 inode 位图，进而找到第一个 inode。
  */
 struct m_inode * new_inode(int dev)
 {

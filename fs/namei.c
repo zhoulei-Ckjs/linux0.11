@@ -141,18 +141,15 @@ static struct buffer_head * find_entry(struct m_inode ** dir, const char * name,
     return NULL;
 }
 
-/*
- *    add_entry()
- *
- * adds a file entry to the specified directory, using the same
- * semantics as find_entry(). It returns NULL if it failed.
- *
- * NOTE!! The inode part of 'de' is left at 0 - which means you
- * may not sleep between calling this and putting something into
- * the entry, as someone else might have used it while you slept.
+/**
+ * @brief 在 dir 目录中添加一个目录项。
+ * @details 目录项的 inode 仍然为 0，add_entry 不负责填写 inode，只负责填写目录项名。
+ * @example dir = tty0 所属文件夹 dev 的 inode; basename = tty0; namelen = 4，即在 dev 文件夹加一个目录项 tty0。
+ * @param dir 文件夹
+ * @param res_dir 找到的空白目录项
+ * @return 待添加的目录项所在的内存页（内存页对应磁盘块）
  */
-// @details 目录项的 inode 仍然为0，add_entry 不负责填写 inode，只负责填写目录项名
-static struct buffer_head * add_entry(struct m_inode * dir, const char * name, int namelen, struct dir_entry ** res_dir)    ///< dir = tty0 所属文件夹 dev 的 inode; basename = tty0; namelen = 4
+static struct buffer_head * add_entry(struct m_inode * dir, const char * name, int namelen, struct dir_entry ** res_dir) 
 {
     int block, i;
     struct buffer_head * bh;    ///< 存储将要添加的目录项所在的内存页
@@ -183,7 +180,7 @@ static struct buffer_head * add_entry(struct m_inode * dir, const char * name, i
             block = create_block(dir, i/DIR_ENTRIES_PER_BLOCK);     ///< create_block 对多个行为合一，如果页 i/DIR_ENTRIES_PER_BLOCK 对应的 block 不存在，则创建；如果存在，则直接返回这个 block。
             if (!block)
                 return NULL;
-            if (!(bh = bread(dir->i_dev, block))) 
+            if (!(bh = bread(dir->i_dev, block)))       ///< 数据块无法读取，可能是坏道、I/O错误、buffer_cache没有buffer、设备不存在。
             {
                 i += DIR_ENTRIES_PER_BLOCK;
                 continue;
@@ -206,8 +203,8 @@ static struct buffer_head * add_entry(struct m_inode * dir, const char * name, i
             for (i = 0; i < NAME_LEN ; i++)
                 de->name[i] = (i < namelen) ? get_fs_byte(name + i) : 0;
             bh->b_dirt = 1;
-            *res_dir = de;
-            return bh;
+            *res_dir = de;      ///< 返回的文件夹
+            return bh;          ///< 内有该目录项的buffer_head。
         }
         de++;
         i++;
@@ -380,29 +377,32 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
             iput(dir);
             return -EACCES;
         }
-        inode = new_inode(dir->i_dev);              ///< 创建一个新的 indoe。
+        inode = new_inode(dir->i_dev);                  ///< 创建一个新的 indoe。
         if (!inode) 
         {
             iput(dir);
-            return -ENOSPC;                         ///< 设备上没有剩余空间。
+            return -ENOSPC;                             ///< 设备上没有剩余空间。
         }
         inode->i_uid = current->euid;
         inode->i_mode = mode;
         inode->i_dirt = 1;
-        bh = add_entry(dir, basename, namelen, &de);    ///< dir = tty0 所属文件夹 dev 的 inode; basename = tty0; namelen = 4
-        if (!bh) {
+        bh = add_entry(dir, basename, namelen, &de);    ///< 在 dir 中加 basename 目录项。dir = tty0 所属文件夹 dev 的 inode; basename = tty0; namelen = 4
+        if (!bh)                        ///< 加入失败的错误处理
+        {
             inode->i_nlinks--;
             iput(inode);
             iput(dir);
             return -ENOSPC;
         }
-        de->inode = inode->i_num;
-        bh->b_dirt = 1;
+        de->inode = inode->i_num;       ///< 填写 inode 号。
+        bh->b_dirt = 1;                 ///< 该磁盘内容被改写，需要同步。
         brelse(bh);
         iput(dir);
         *res_inode = inode;
         return 0;
     }
+
+    /// 该文件 inode 存在。
     inr = de->inode;
     dev = dir->i_dev;
     brelse(bh);
