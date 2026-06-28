@@ -4,14 +4,14 @@
 #include <sys/types.h>
 
 /* open/fcntl - NOCTTY, NDELAY isn't implemented yet */
-#define O_ACCMODE	00003	/* 读和写的掩码 */
-#define O_RDONLY	   00
-#define O_WRONLY	   01
-#define O_RDWR		   02	/* 读写权限 */
-#define O_CREAT		00100	/* 创建，not fcntl */
-#define O_EXCL		00200	/* not fcntl */
+#define O_ACCMODE	00003	/* 璇诲拰鍐欑殑鎺╃爜 */
+#define O_RDONLY	   00	/* 鍙 */
+#define O_WRONLY	   01	/* 鍙啓 */
+#define O_RDWR		   02	/* 璇诲啓鏉冮檺 */
+#define O_CREAT		00100	/* 鍒涘缓锛宯ot fcntl */
+#define O_EXCL		00200	/* 鐙崰锛宔xclusive锛宯ot fcntl */
 #define O_NOCTTY	00400	/* not fcntl */
-#define O_TRUNC		01000	/* 截断 */
+#define O_TRUNC		01000	/* 鎴柇 */
 #define O_APPEND	02000
 #define O_NONBLOCK	04000	/* not fcntl */
 #define O_NDELAY	O_NONBLOCK

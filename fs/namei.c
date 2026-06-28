@@ -336,7 +336,7 @@ struct m_inode * namei(const char * pathname)
 
 /// @param res_inode 输出参数，待打开文件的 inode，
 /// @retval 0: 成功
-int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_inode)      ///< pathname = /dev/tty0
+int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_inode)      ///< pathname = /dev/tty0, flag = O_RDWR
 {
     const char * basename;
     int inr, dev, namelen;
@@ -366,8 +366,7 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
     /// 找不到该文件的 inode
     if (!bh)
     {
-        /// 文件 inode 找不到，又不具备创建/写权限，那就按错误处理
-        if (!(flag & O_CREAT)) 
+        if (!(flag & O_CREAT))      ///< 文件 inode 找不到，又不具备创建/写权限，那就按错误处理
         {
             iput(dir);
             return -ENOENT;
@@ -377,6 +376,8 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
             iput(dir);
             return -EACCES;
         }
+
+        /// 走到这里表明文件具备可创建/可写权限，那就创建一个新的文件然后返回。
         inode = new_inode(dir->i_dev);                  ///< 创建一个新的 indoe。
         if (!inode) 
         {
@@ -387,7 +388,7 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
         inode->i_mode = mode;
         inode->i_dirt = 1;
         bh = add_entry(dir, basename, namelen, &de);    ///< 在 dir 中加 basename 目录项。dir = tty0 所属文件夹 dev 的 inode; basename = tty0; namelen = 4
-        if (!bh)                        ///< 加入失败的错误处理
+        if (!bh)                        ///< add_entry失败了
         {
             inode->i_nlinks--;
             iput(inode);
@@ -402,17 +403,17 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
         return 0;
     }
 
-    /// 该文件 inode 存在。
+    /// 该文件 inode 存在，在 find_entry 函数中找到了目录项。
     inr = de->inode;
     dev = dir->i_dev;
     brelse(bh);
     iput(dir);
-    if (flag & O_EXCL)
+    if (flag & O_EXCL)                  ///< 如果具备独占标志，如（CREATE | EXCL）说明用户要求：必须创建新的，不能打开旧的。
         return -EEXIST;
-    if (!(inode=iget(dev,inr)))
+    if (!(inode = iget(dev, inr)))
         return -EACCES;
-    if ((S_ISDIR(inode->i_mode) && (flag & O_ACCMODE)) ||
-        !permission(inode,ACC_MODE(flag))) {
+    if ((S_ISDIR(inode->i_mode) && (flag & O_ACCMODE)) || !permission(inode, ACC_MODE(flag)))   ///< Linux 规定不可以将目录当成文件来写，所以这里首先判断文件夹的打开权限；
+    {
         iput(inode);
         return -EPERM;
     }

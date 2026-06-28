@@ -17,7 +17,7 @@
 extern int errno;
 
 #define ERROR       99
-#define EPERM       1
+#define EPERM       1   /* 操作不允许，Operation not permitted */
 #define ENOENT      2   /* 没有这样的文件或目录 */
 #define ESRCH       3
 #define EINTR       4
@@ -29,11 +29,11 @@ extern int errno;
 #define ECHILD      10
 #define EAGAIN      11
 #define ENOMEM      12
-#define EACCES      13
+#define EACCES      13  /* 访问错误 */
 #define EFAULT      14
 #define ENOTBLK     15
 #define EBUSY       16
-#define EEXIST      17
+#define EEXIST      17  /* 已存在 */
 #define EXDEV       18
 #define ENODEV      19
 #define ENOTDIR     20
