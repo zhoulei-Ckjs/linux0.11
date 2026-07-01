@@ -4,7 +4,7 @@
 #include <sys/types.h>
 
 /* open/fcntl - NOCTTY, NDELAY isn't implemented yet */
-#define O_ACCMODE	00003	/* 读和写的掩码 */
+#define O_ACCMODE	00003	/* 读和写的掩码，0011 */
 #define O_RDONLY	   00	/* 只读 */
 #define O_WRONLY	   01	/* 只写 */
 #define O_RDWR		   02	/* 读写权限 */
