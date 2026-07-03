@@ -28,8 +28,8 @@
 #define MAY_EXEC 1      /* 对于普通文件时可执行权限，目录没有“执行”的概念，它的 x 权限实际代表 search（搜索/遍历）权限，
     有 x 权限：可以 cd 进入该目录，或访问该目录下的子文件/子目录（即使没有 r 权限）
     无 x 权限：无法进入该目录，也无法通过该目录访问任何下级路径（即使知道完整路径）*/
-#define MAY_WRITE 2
-#define MAY_READ 4
+#define MAY_WRITE 2     /* 可写，0b0010 */
+#define MAY_READ 4      /* 可读，0b0100 */
 
 /**
  * @brief 权限检查，检查当前进程是否有权限
@@ -79,7 +79,7 @@ static int match(int len, const char * name, struct dir_entry * de)
  * @param dir 当前目录
  * @param name 为当前目录下的文件相对路径，如 name = dev/tty0，namelen = 3，则寻找当前目录下的 dev 目录。
  * @param res_dir 输出参数，找到的目录或文件
- * @return 返回包含当前子目录的页面 buffer_head
+ * @return 返回包含当前子目录项的页面 buffer_head
  */
 static struct buffer_head * find_entry(struct m_inode ** dir, const char * name, int namelen, struct dir_entry ** res_dir) 
 {
@@ -141,7 +141,7 @@ static struct buffer_head * find_entry(struct m_inode ** dir, const char * name,
         if (match(namelen, name, de))
         {
             *res_dir = de;                          ///< 找到了目录项
-            return bh;                              ///< 返回包含当前子目录的页面
+            return bh;                              ///< 返回包含当前子目录项的页面
         }
         de++;
         i++;
@@ -348,12 +348,13 @@ struct m_inode * namei(const char * pathname)
 int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_inode)      ///< pathname = /dev/tty0, flag = O_RDWR
 {
     const char * basename;
-    int inr, dev, namelen;
-    struct m_inode * dir, *inode;
+    int inr, dev, namelen;      ///< inr 为目标文件 inode 的位置索引；
+    struct m_inode * dir;       ///< 用于存储目标打开文件所属文件夹的 inode。
+    struct m_inode *inode;      ///< 用于存储目标文件 indoe。
     struct buffer_head * bh;
     struct dir_entry * de;
 
-    if ((flag & O_TRUNC) && !(flag & O_ACCMODE))    ///< 如果用户要求截断文件但是又没有读写权限，那么系统默认会给它加个读写权限。
+    if ((flag & O_TRUNC) && !(flag & O_ACCMODE))    ///< 如果用户要求截断文件但是又没有读写权限，那么系统默认会给它加个 写 权限。
         flag |= O_WRONLY;
 
     mode &= 0777 & ~current->umask;                 ///< 去掉权限屏蔽字
@@ -412,22 +413,27 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
         return 0;
     }
 
-    /// 该文件 inode 存在，在 find_entry 函数中找到了目录项。
-    inr = de->inode;
-    dev = dir->i_dev;
+    /// 该文件 inode 存在，在 find_entry 函数中找到了目录项，此时 bh 中包含了目标文件的目录项。
+    inr = de->inode;       inode 索引作用？             ///< 目标文件的 inode 索引。
+    dev = dir->i_dev;                   ///< 获取设备。
     brelse(bh);
     iput(dir);
     if (flag & O_EXCL)                  ///< 如果具备独占标志，如（CREATE | EXCL）说明用户要求：必须创建新的，不能打开旧的。
         return -EEXIST;
     if (!(inode = iget(dev, inr)))
         return -EACCES;
-    if ((S_ISDIR(inode->i_mode) && (flag & O_ACCMODE)) || !permission(inode, ACC_MODE(flag)))   ///< Linux 规定不可以将目录当成文件来写，所以这里首先判断文件夹的打开权限；
+    if ((S_ISDIR(inode->i_mode) && (flag & O_ACCMODE)) || !permission(inode, ACC_MODE(flag)))   
+        ///< Linux 规定不可以将目录当成文件来写，所以这里首先判断文件夹的打开权限，如果以可写打开的，则不予通过。
+        ///< 其次判断该文件 inode 是否具备 flag 要求的权限，如果 inode 不具备 flag 要求的读写相关访问权限，则不予通过。
     {
         iput(inode);
         return -EPERM;
     }
-    inode->i_atime = CURRENT_TIME;
-    if (flag & O_TRUNC)
+    /// 走到这里，满足
+    /// 1.如果是目录，则只读方式打开。
+    /// 2.inode 的访问权限具备 flag 要求的权限。
+    inode->i_atime = CURRENT_TIME;      ///< 修改访问时间。
+    if (flag & O_TRUNC)     ///< 截断文件
         truncate(inode);
     *res_inode = inode;
     return 0;

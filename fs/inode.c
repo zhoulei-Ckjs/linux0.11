@@ -170,6 +170,7 @@ static int _bmap(struct m_inode * inode, int block, int create)
  * @brief 获取 inode->i_zone[block] 物理块号。
  * @param inode 文件
  * @param block 数据块号
+ * @return inode->i_zone[block]
  */
 int bmap(struct m_inode * inode, int block)
 {
@@ -402,6 +403,7 @@ static void read_inode(struct m_inode * inode)
     if (!(sb = get_super(inode->i_dev)))            ///< 获取超级块。
         panic("trying to read inode without dev");
     block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks + (inode->i_num - 1) / INODES_PER_BLOCK;  ///< 计算所在逻辑块号
+        ///< 其中，2为分区中引导块和超级块占用的2个block；
     if (!(bh = bread(inode->i_dev, block)))         ///< 读取磁盘块到内存
         panic("unable to read i-node block");
     *(struct d_inode *)inode = ((struct d_inode *)bh->b_data)[(inode->i_num - 1) % INODES_PER_BLOCK];

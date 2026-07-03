@@ -19,19 +19,19 @@ struct stat
 };
 
 #define S_IFMT  00170000
-#define S_IFREG  0100000    /* фум╗╣днд╪Ч */
-#define S_IFBLK  0060000    /* ©ИиХ╠╦нд╪Чё╛с╡ел║╒хМел║╒╧Бел╣х©ирткФ╩З╥цнй╣д╢Ф╢╒иХ╠╦║ё*/
-#define S_IFDIR  0040000    /* д©б╪нд╪Ч */
+#define S_IFREG  0100000    /* Ф≥╝И─ Г └Ф√┤Д╩╤ */
+#define S_IFBLK  0060000    /* Е²≈Х╝╬Е╓┤Ф√┤Д╩╤О╪▄Г║╛Г⌡≤Ц─│Х╫╞Г⌡≤Ц─│Е┘┴Г⌡≤Г╜┴Е▐╞Д╩╔И ▐Ф°╨Х╝©И≈╝Г └Е╜≤Е┌╗Х╝╬Е╓┤Ц─┌*/
+#define S_IFDIR  0040000    /* Г⌡╝Е╫∙Ф√┤Д╩╤ */
 #define S_IFCHR  0020000
 #define S_IFIFO  0010000
 #define S_ISUID  0004000
 #define S_ISGID  0002000
 #define S_ISVTX  0001000
 
-#define S_ISREG(m)    (((m) & S_IFMT) == S_IFREG)   /* еп╤ойг╥Ян╙фум╗╣днд╪Ч║ё*/
-#define S_ISDIR(m)    (((m) & S_IFMT) == S_IFDIR)   /* еп╤ойг╥Ян╙д©б╪нд╪Ч║ё*/
+#define S_ISREG(m)    (((m) & S_IFMT) == S_IFREG)   /* Is Regular fileО╪▄Е┬╓Ф√╜Ф≤╞Е░╕Д╦╨Ф≥╝И─ Г └Ф√┤Д╩╤Ц─┌*/
+#define S_ISDIR(m)    (((m) & S_IFMT) == S_IFDIR)   /* Е┬╓Ф√╜Ф≤╞Е░╕Д╦╨Г⌡╝Е╫∙Ф√┤Д╩╤Ц─┌*/
 #define S_ISCHR(m)    (((m) & S_IFMT) == S_IFCHR)
-#define S_ISBLK(m)    (((m) & S_IFMT) == S_IFBLK)   /* еп╤ойг╥Ян╙©ИиХ╠╦нд╪Ч║ё*/
+#define S_ISBLK(m)    (((m) & S_IFMT) == S_IFBLK)   /* Е┬╓Ф√╜Ф≤╞Е░╕Д╦╨Е²≈Х╝╬Е╓┤Ф√┤Д╩╤Ц─┌*/
 #define S_ISFIFO(m)   (((m) & S_IFMT) == S_IFIFO)
 
 #define S_IRWXU 00700

@@ -119,7 +119,7 @@ struct m_inode
 
     /* 下面这些属性是内存 inode 独有的，内存 inode 继承了磁盘 inode */
     struct task_struct * i_wait;    ///< 等待该文件的进程队列。
-    unsigned long i_atime;          ///< 访问时间，文件最后被读取（Read）的时间。
+    unsigned long i_atime;          ///< 访问时间（access time），文件最后被读取（Read）的时间。
     unsigned long i_ctime;          ///< 状态改变时间，文件元数据（如权限、所有者）最后被修改的时间。
     unsigned short i_dev;           ///< 设备号，该 inode 所在的设备编号（如 0x301 代表 hda1）。
     unsigned short i_num;           ///< inode 编号，该 inode 在文件系统中的唯一编号（索引）。inode 号 1 固定是根目录。

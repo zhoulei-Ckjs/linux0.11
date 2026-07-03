@@ -2,8 +2,8 @@
 #include <sys/stat.h>
 
 /**
- * @brief ÊÍ·Å 1 ¼¶¿é¡£
- * @details 1 ¼¶¿éÖĞ´æ´¢ÁË512¸öÖ±½Ó¿é£¨Ã¿¸ö¿éÕ¼1K£©£¬ÏÈÊÍ·ÅÕâ 512 ¸öÖ±½Ó¿é£¬È»ºóÊÍ·ÅÕâ¸ö 1 ¼¶¿é±¾Éí¡£
+ * @brief é‡Šæ”¾ 1 çº§å—ã€‚
+ * @details 1 çº§å—ä¸­å­˜å‚¨äº†512ä¸ªç›´æ¥å—ï¼ˆæ¯ä¸ªå—å 1Kï¼‰ï¼Œå…ˆé‡Šæ”¾è¿™ 512 ä¸ªç›´æ¥å—ï¼Œç„¶åé‡Šæ”¾è¿™ä¸ª 1 çº§å—æœ¬èº«ã€‚
  */
 static void free_ind(int dev, int block)
 {
@@ -13,20 +13,20 @@ static void free_ind(int dev, int block)
 
     if (!block)
         return;
-    if (bh = bread(dev, block))     ///< ¶ÁÈ¡ 1 ¼¶¿é£¨1 ¼¶¿éÀïÃæ´æ´¢µÄÊÇÖ±½Ó¿éµÄ¿éºÅ£¬¿éºÅÎª unsigned short£¬Õ¼ÓÃ 2 ×Ö½Ú£©¡£
+    if (bh = bread(dev, block))     ///< è¯»å– 1 çº§å—ï¼ˆ1 çº§å—é‡Œé¢å­˜å‚¨çš„æ˜¯ç›´æ¥å—çš„å—å·ï¼Œå—å·ä¸º unsigned shortï¼Œå ç”¨ 2 å­—èŠ‚ï¼‰ã€‚
     {
         p = (unsigned short *) bh->b_data;
         for (i = 0; i < 512; i++, p++)
-            if (*p)                 ///< ¿éºÅ²»Îª 0 ÔòÊÍ·Å¿éºÅ¡£
+            if (*p)                 ///< å—å·ä¸ä¸º 0 åˆ™é‡Šæ”¾å—å·ã€‚
                 free_block(dev, *p);
-        brelse(bh);                 ///< ÊÍ·Å buffer_head¡£
+        brelse(bh);                 ///< é‡Šæ”¾ buffer_headã€‚
     }
-    free_block(dev, block);         ///< ÊÍ·Å 1 ¼¶¿é×ÔÉí¡£
+    free_block(dev, block);         ///< é‡Šæ”¾ 1 çº§å—è‡ªèº«ã€‚
 }
 
 /**
- * @brief ÊÍ·Å¶ş¼¶´ÅÅÌ¿é¡£
- * @details Ò»¸ö¶ş¼¶¿é´æ´¢ÁË 512 ¸öÒ»¼¶¿é¿éºÅ£¨Ò»¸ö¿éºÅÕ¼ unsigned short£©£¬ÊÍ·ÅËùÓĞÒ»¼¶¿é£¬È»ºóÊÍ·Å¶ş¼¶¿é±¾Éí¡£
+ * @brief é‡Šæ”¾äºŒçº§ç£ç›˜å—ã€‚
+ * @details ä¸€ä¸ªäºŒçº§å—å­˜å‚¨äº† 512 ä¸ªä¸€çº§å—å—å·ï¼ˆä¸€ä¸ªå—å·å  unsigned shortï¼‰ï¼Œé‡Šæ”¾æ‰€æœ‰ä¸€çº§å—ï¼Œç„¶åé‡Šæ”¾äºŒçº§å—æœ¬èº«ã€‚
  */
 static void free_dind(int dev, int block)
 {
@@ -36,39 +36,39 @@ static void free_dind(int dev, int block)
 
     if (!block)
         return;
-    if (bh = bread(dev, block))     ///< ¶ÁÈ¡ 2 ¼¶¿éµ½ÄÚ´æ¡£
+    if (bh = bread(dev, block))     ///< è¯»å– 2 çº§å—åˆ°å†…å­˜ã€‚
     {
         p = (unsigned short *) bh->b_data;
-        for (i = 0; i < 512; i++, p++)  ///< ÊÍ·ÅËùÓĞ 1 ¼¶¿é¡£
+        for (i = 0; i < 512; i++, p++)  ///< é‡Šæ”¾æ‰€æœ‰ 1 çº§å—ã€‚
             if (*p)
                 free_ind(dev, *p);
-        brelse(bh);                 ///< ÊÍ·Å buffer_head
+        brelse(bh);                 ///< é‡Šæ”¾ buffer_head
     }
-    free_block(dev, block);         ///< ÊÍ·Å 2 ¼¶¿é±¾Éí¡£
+    free_block(dev, block);         ///< é‡Šæ”¾ 2 çº§å—æœ¬èº«ã€‚
 }
 
 /**
- * @brief ½Ø¶ÏÎÄ¼ş
- * @details Ö»´¦ÀíÄ¿Â¼ºÍÆÕÍ¨ÎÄ¼ş£¬Ö±½ÓÊÍ·ÅÖ±½ÓÊı¾İ¿é£¬ÊÍ·ÅÒ»¼¶¼ä½Ó¿é¡¢¶ş¼¶¼ä½Ó¿é£¨µİ¹éÊÍ·ÅÃ¿¸öÊı¾İ¿é£©¡£
+ * @brief æˆªæ–­æ–‡ä»¶
+ * @details åªå¤„ç†ç›®å½•å’Œæ™®é€šæ–‡ä»¶ï¼Œç›´æ¥é‡Šæ”¾ç›´æ¥æ•°æ®å—ï¼Œé‡Šæ”¾ä¸€çº§é—´æ¥å—ã€äºŒçº§é—´æ¥å—ï¼ˆé€’å½’é‡Šæ”¾æ¯ä¸ªæ•°æ®å—ï¼‰ã€‚
  */
 void truncate(struct m_inode * inode)
 {
     int i;
 
-    if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)))    ///< Èç¹û²»ÊÇÆÕÍ¨ÎÄ¼şÒ²²»ÊÇÄ¿Â¼£¬Ö±½Ó·µ»Ø¡£
+    if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)))    ///< å¦‚æœä¸æ˜¯æ™®é€šæ–‡ä»¶ä¹Ÿä¸æ˜¯ç›®å½•ï¼Œç›´æ¥è¿”å›ã€‚
         return;
 
-    /// Èç¹ûÊÇÆÕÍ¨ÎÄ¼ş»òÄ¿Â¼
-    for (i = 0; i < 7; i++)     ///< Ç° 7 ¸öÎªÖ±½ÓÊı¾İ¿é
+    /// å¦‚æœæ˜¯æ™®é€šæ–‡ä»¶æˆ–ç›®å½•
+    for (i = 0; i < 7; i++)     ///< å‰ 7 ä¸ªä¸ºç›´æ¥æ•°æ®å—
         if (inode->i_zone[i]) 
         {
-            free_block(inode->i_dev, inode->i_zone[i]);         ///< ÊÍ·Å¿é£¨1KB£©¡£
-            inode->i_zone[i] = 0;                               ///< ÇåÁãÖ¸Õë¡£
+            free_block(inode->i_dev, inode->i_zone[i]);         ///< é‡Šæ”¾å—ï¼ˆ1KBï¼‰ã€‚
+            inode->i_zone[i] = 0;                               ///< æ¸…é›¶æŒ‡é’ˆã€‚
         }
-    free_ind(inode->i_dev, inode->i_zone[7]);                   ///< ÊÍ·ÅÒ»¼¶¼ä½Ó¿é¡£
-    free_dind(inode->i_dev,inode->i_zone[8]);                   ///< ÊÍ·Å¶ş¼¶¼ä½Ó¿é¡£
-    inode->i_zone[7] = inode->i_zone[8] = 0;                    ///< ÇåÁãÖ¸Õë¡£
-    inode->i_size = 0;          ///< ÎÄ¼ş´óĞ¡Îª 0¡£
-    inode->i_dirt = 1;          ///< ±ê¼ÇÎª¸Ã inode ĞèÒªÍ¬²½ÖÁ´ÅÅÌ¡£
-    inode->i_mtime = inode->i_ctime = CURRENT_TIME;             ///< ¸üĞÂ×´Ì¬¸Ä±äÊ±¼äºÍÎÄ¼şÄÚÈİĞŞ¸ÄÊ±¼ä¡£
+    free_ind(inode->i_dev, inode->i_zone[7]);                   ///< é‡Šæ”¾ä¸€çº§é—´æ¥å—ã€‚
+    free_dind(inode->i_dev,inode->i_zone[8]);                   ///< é‡Šæ”¾äºŒçº§é—´æ¥å—ã€‚
+    inode->i_zone[7] = inode->i_zone[8] = 0;                    ///< æ¸…é›¶æŒ‡é’ˆã€‚
+    inode->i_size = 0;          ///< æ–‡ä»¶å¤§å°ä¸º 0ã€‚
+    inode->i_dirt = 1;          ///< æ ‡è®°ä¸ºè¯¥ inode éœ€è¦åŒæ­¥è‡³ç£ç›˜ã€‚
+    inode->i_mtime = inode->i_ctime = CURRENT_TIME;             ///< æ›´æ–°çŠ¶æ€æ”¹å˜æ—¶é—´å’Œæ–‡ä»¶å†…å®¹ä¿®æ”¹æ—¶é—´ã€‚
 }
