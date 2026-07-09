@@ -51,7 +51,7 @@ extern long startup_time;
  */
 #define EXT_MEM_K (*(unsigned short *)0x90002)          /* 扩展内存大小（1MB以后的可用内存，单位 KB）,由 setup.s 写入到这个位置。*/
 #define DRIVE_INFO (*(struct drive_info *)0x90080)      /* setup.s:59 硬盘信息。*/
-#define ORIG_ROOT_DEV (*(unsigned short *)0x901FC)      /* 这个位置存储了根设备号，硬盘为 0x306 */
+#define ORIG_ROOT_DEV (*(unsigned short *)0x901FC)      /* bootsect.s:240 这个位置存储了根设备号，硬盘为 0x306 */
 
 /**
  * @brief 从 cmos 中读取时间的相关信息。

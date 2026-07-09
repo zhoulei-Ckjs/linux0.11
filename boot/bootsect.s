@@ -1,9 +1,9 @@
 ;   bootsect.s		(C) 1991 Linus Torvalds
-; bootsect �� bios ���ص� 0x7c00, bootsect ���Լ��ƶ��� 0x90000, ������ת�����
-; Ȼ�������� bios ���жϽ� setup ���ص� 0x90200����ϵͳ���ص� 0x10000��
+; bootsect 由 bios 加载到 0x7c00, bootsect 将自己移动到 0x90000, 并且跳转到那里。
+; 然后它利用 bios 的中断将 setup 加载到 0x90200，将系统加载到 0x10000。
 
-; SYS_SIZE ��Ҫ���ص�ϵͳ�Ĵ�С����СҪ x16��
-; 0x3000 is 0x30000 bytes = 196kB, �㹻�洢��ǰ�İ汾�� linux �ˡ�
+; SYS_SIZE 是要加载的系统的大小，大小要 x16。
+; 0x3000 is 0x30000 bytes = 196kB, 足够存储当前的版本的 linux 了。
 SYSSIZE = 0x3000
 
 .globl begtext, begdata, begbss, endtext, enddata, endbss
@@ -22,20 +22,20 @@ SETUPSEG = 0x9020			; setup starts here
 SYSSEG   = 0x1000			; system loaded at 0x10000 (65536).
 ENDSEG   = SYSSEG + SYSSIZE		; where to stop loading
 
-; ROOT_DEV:	0x200 - floppy ��Ϊ boot.
-;		0x301 - ��һ��Ӳ�̵ĵ�һ������
-ROOT_DEV = 0x306	; Ӳ�̸��豸�š�0x306 ����0x3�����豸�ţ���ʾHD��6 �ǵ� 6 ��������
-	; 0-4 �ǵ�һ��Ӳ�̵� 5 ��������5-9 Ϊ�ڶ���Ӳ�̵� 5 ��������6 ���ʾ�ڶ���Ӳ�̵ĵ� 1 �����÷���
-	; һ��һ��Ӳ�̵ĵ� 1 ������ΪӲ�̱�ʶ������ 4 ��Ϊ���÷�����
+; ROOT_DEV:	0x200 - floppy 作为 boot.
+;		0x301 - 第一个硬盘的第一个分区
+ROOT_DEV = 0x306	; 硬盘根设备号。0x306 其中0x3是主设备号，表示HD，6 是第 6 个分区，
+	; 0-4 是第一个硬盘的 5 个分区；5-9 为第二个硬盘的 5 个分区，6 则表示第二个硬盘的第 1 个可用分区
+	; 一般一个硬盘的第 1 个分区为硬盘标识，其余 4 个为可用分区。
 
 entry start
-; �������� 0x7c00 �ƶ��� 0x90000 ����
+; 将自身由 0x7c00 移动到 0x90000 处。
 start:
 	mov	ax,#BOOTSEG
 	mov	ds,ax
 	mov	ax,#INITSEG
 	mov	es,ax
-	mov	cx,#256		; ���� 256 ��
+	mov	cx,#256		; 拷贝 256 次
 	sub	si,si
 	sub	di,di
 	rep
@@ -234,12 +234,12 @@ msg1:
 	.ascii "Loading system ..."
 	.byte 13,10,13,10
 
-; ���� bootsect ������һ���¾��ǽ��Լ��ƶ��� 0x90000 �����ʵ�ǰλ�ñ�Ϊ 0x90000+508=0x901FC
+; 由于 bootsect 上来第一件事就是将自己移动到 0x90000 处，故当前位置变为 0x90000+508=0x901FC
 .org 508
 root_dev:
-	.word ROOT_DEV		; 0x0306�����豸�ţ��ڶ������̵�һ������
+	.word ROOT_DEV		; 0x0306，根设备号，第二个磁盘第一个扇区
 boot_flag:
-	.word 0xAA55		; ��β��־
+	.word 0xAA55		; 结尾标志
 
 .text
 endtext:

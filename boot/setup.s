@@ -56,26 +56,25 @@ start:
     mov    [10],bx
     mov    [12],cx
 
-; Get hd0 data
+; 获取 hd0 的磁盘信息。
     mov    ax,#0x0000
     mov    ds,ax
-    lds    si, [4*0x41]     ; 0x41 中断向量存储了一个32位远指针，共 16 字节的硬盘信息。
-    mov    ax,#INITSEG
-    mov    es,ax
-    mov    di,#0x0080
-    mov    cx,#0x10
+    lds    si, [4*0x41]     ; 0x41 中断向量（还在bios阶段的每个中断向量占用4字节，所以这里*4）存储了一个32位远指针，指向的地址处共有 16 字节的硬盘信息。
+    mov    ax, #INITSEG     ; 0x9000
+    mov    es, ax
+    mov    di, #0x0080      ; 这里 es:di 就是 0x90080
+    mov    cx, #0x10
     rep
     movsb                   ; 复制 16 字节。
 
-; Get hd1 data
-
+; 获取 hd1 的磁盘信息。
     mov    ax,#0x0000
-    mov    ds,ax
-    lds    si,[4*0x46]
-    mov    ax,#INITSEG
-    mov    es,ax
-    mov    di,#0x0090
-    mov    cx,#0x10
+    mov    ds, ax
+    lds    si, [4*0x46]
+    mov    ax, #INITSEG
+    mov    es, ax
+    mov    di, #0x0090      ; hd1 的磁盘信息在 0x90090 的位置。
+    mov    cx, #0x10
     rep
     movsb
 

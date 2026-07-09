@@ -162,7 +162,7 @@ static struct super_block * read_super(int dev)		///< dev = 0x306
 		s->s_imap[i] = NULL;
 	for (i=0;i<Z_MAP_SLOTS;i++)
 		s->s_zmap[i] = NULL;
-	block = 2;						///< linux0.11 中 1 个 block 大小为 1024 字节，那读取 block = 2 就是读取 1024~2047 磁盘的数据。
+	block = 2;						///< linux0.11 中 1 个 block 大小为 1024 字节，那读取 block = 2 就是读取 2048~3071 磁盘的数据（即inode位图位置）。
 	
 	/* 读取 inode 位图 */
 	for (i = 0 ; i < s->s_imap_blocks ; i++)	///< 告诉内核需要读取多少个逻辑块才能把整个 Inode 位图读入内存
@@ -301,7 +301,7 @@ void mount_root(void)
 		panic("Unable to mount root");
 
 	/// 获取 root inode。(root inode 在文件系统初始化时创建的，如用 mkfs 格式化，会分配 inode 表中第 1 个 inode 作为根目录。)
-	if (!(mi = iget(ROOT_DEV, ROOT_INO)))   ///< ROOT_DEV = 0x306
+	if (!(mi = iget(ROOT_DEV, ROOT_INO)))   ///< ROOT_DEV = 0x306, ROOT_INO = 1
 		panic("Unable to read root i-node");
 	mi->i_count += 3;						///< 这里总共是 4 个引用（超级块2个，当前进程2个），分配的时候默认有 1 个，所以应该加 3 个。
 	p->s_isup = p->s_imount = mi;			///< 超级块增加两个这个 inode 的引用。

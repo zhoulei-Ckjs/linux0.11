@@ -379,7 +379,7 @@ struct m_inode * iget(int dev, int nr)    ///< dev = 0x306, nr = 1，inode 号 1
         return inode;
     }
 
-    /// 走到这里就说明上面根据 dev 和 nr 没有找到 inode。
+    /// 走到这里就说明上面根据 dev 和 nr 没有在 inode_table 中找到 inode，就是说缓存中没有这个 inode。
     if (!empty)                 ///< 既没找到空闲 inode 也没在 inode_table 中找到目标 inode，直接返回 NULL。
         return (NULL);
     inode = empty;
@@ -404,9 +404,11 @@ static void read_inode(struct m_inode * inode)
         panic("trying to read inode without dev");
     block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks + (inode->i_num - 1) / INODES_PER_BLOCK;  ///< 计算所在逻辑块号
         ///< 其中，2为分区中引导块和超级块占用的2个block；
+        ///< 这里 inode->i_num-1/INODES_PER_BLOCK，是判断在第几个 inode 表中。
     if (!(bh = bread(inode->i_dev, block)))         ///< 读取磁盘块到内存
         panic("unable to read i-node block");
     *(struct d_inode *)inode = ((struct d_inode *)bh->b_data)[(inode->i_num - 1) % INODES_PER_BLOCK];
+        ///< 这里能够说明 ROOT_INO = 1，其实就是硬盘中 inode 表中的第一个 inode（没有硬盘中第 0 个的说法）。
     brelse(bh);                 ///< 释放 buffer_head。
     unlock_inode(inode);        ///< 释放 inode。
 }

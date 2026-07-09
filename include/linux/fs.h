@@ -123,6 +123,8 @@ struct m_inode
     unsigned long i_ctime;          ///< 状态改变时间，文件元数据（如权限、所有者）最后被修改的时间。
     unsigned short i_dev;           ///< 设备号，该 inode 所在的设备编号（如 0x301 代表 hda1）。
     unsigned short i_num;           ///< inode 编号，该 inode 在文件系统中的唯一编号（索引）。inode 号 1 固定是根目录。
+        ///< 这个 i_num 是和硬盘中 inode 表在逻辑熵是严格对应的，i_num = 1 则表示硬盘中 inode 表的第一个 inode，同理后面的所有。
+        ///< 所以这个 i_num 最小就是 1，是序号，代表 ROOT_INO。
     unsigned short i_count;         ///< 引用计数，记录当前有多少个进程或数据结构正在使用这个 inode。
     unsigned char i_lock;           ///< 锁标志。
     unsigned char i_dirt;           ///< 脏标记。
@@ -159,7 +161,7 @@ struct super_block
     unsigned long s_max_size;           ///<
     unsigned short s_magic;             ///< 魔数，Minix文件系统时 0x137F
 /* These are only in memory */
-    struct buffer_head * s_imap[8];     ///< inode 位图在内存中的缓冲。inode 位图中的每一位表示一个 inode 是否被使用（0表示空闲，1表示使用）。
+    struct buffer_head * s_imap[8];     ///< 磁盘中的 inode 位图在内存中的缓冲。inode 位图中的每一位表示一个 inode 是否被使用（0表示空闲，1表示使用）。
                                         ///< 当创建新文件时，文件系统会扫描 inode 位图，找到第一个空闲位，将其置为 1，分配对应的 inode；
                                         ///< 删除文件时，将对应位清 0，释放 inode。
 

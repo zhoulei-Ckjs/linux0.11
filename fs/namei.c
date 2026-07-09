@@ -414,7 +414,7 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
     }
 
     /// 该文件 inode 存在，在 find_entry 函数中找到了目录项，此时 bh 中包含了目标文件的目录项。
-    inr = de->inode;       inode 索引作用？             ///< 目标文件的 inode 索引。
+    inr = de->inode;                    ///< 目标文件的 inode 索引。
     dev = dir->i_dev;                   ///< 获取设备。
     brelse(bh);
     iput(dir);
