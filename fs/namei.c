@@ -343,8 +343,13 @@ struct m_inode * namei(const char * pathname)
     return dir;
 }
 
-/// @param res_inode 输出参数，待打开文件的 inode，
-/// @retval 0: 成功
+/**
+ * @brief 打开文件。
+ * @details 对目标文件进行打开，并匹配相应的打开方式，返回打开文件的 inode（如果没有则分配一个空闲 inode）。
+ * @param res_inode 输出参数，待打开文件的 inode。
+ * @retval 0: 成功。
+ * @retval <0: 失败。
+ */
 int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_inode)      ///< pathname = /dev/tty0, flag = O_RDWR
 {
     const char * basename;
@@ -371,9 +376,11 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
         iput(dir);
         return -EISDIR;                             ///< 报文件夹错误
     }
-    bh = find_entry(&dir, basename, namelen, &de);  ///< 找到目标文件的 inode。dir 为 tty0 所属文件夹 dev 的 inode, basename = tty0, namelen = 4
 
-    /// 找不到该文件的 inode
+    /// 1.寻找目标文件的inode。
+    bh = find_entry(&dir, basename, namelen, &de);  ///< 寻找目标文件的 inode。dir 为 tty0 所属文件夹 dev 的 inode, basename = tty0, namelen = 4
+
+    /// 2.如果找不到该文件的inode，那就创建一个新的inode。这部分是对分区上的 inode 位图进行操作。
     if (!bh)
     {
         if (!(flag & O_CREAT))      ///< 文件 inode 找不到，又不具备创建/写权限，那就按错误处理
@@ -388,7 +395,7 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
         }
 
         /// 走到这里表明文件具备可创建/可写权限，那就创建一个新的文件然后返回。
-        inode = new_inode(dir->i_dev);                  ///< 创建一个新的 indoe。
+        inode = new_inode(dir->i_dev);                  ///< 创建一个新的 inode。
         if (!inode) 
         {
             iput(dir);
@@ -413,14 +420,15 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
         return 0;
     }
 
-    /// 该文件 inode 存在，在 find_entry 函数中找到了目录项，此时 bh 中包含了目标文件的目录项。
+    /// 3.该文件 inode 存在，在 find_entry 函数中找到了目录项，此时 bh 中包含了目标文件的目录项。
+    /// 上面是操作 inode 位图，这部分是操作 inode 表。我们就将这个 inode(dev, inr) 从磁盘中读取出来，这部分是读取分区中的 inode 表（表中存储了 inode 详细信息）。
     inr = de->inode;                    ///< 目标文件的 inode 索引。
     dev = dir->i_dev;                   ///< 获取设备。
     brelse(bh);
     iput(dir);
     if (flag & O_EXCL)                  ///< 如果具备独占标志，如（CREATE | EXCL）说明用户要求：必须创建新的，不能打开旧的。
         return -EEXIST;
-    if (!(inode = iget(dev, inr)))
+    if (!(inode = iget(dev, inr)))      ///< 读取分区中 inode 表中的 inode[inr]。
         return -EACCES;
     if ((S_ISDIR(inode->i_mode) && (flag & O_ACCMODE)) || !permission(inode, ACC_MODE(flag)))   
         ///< Linux 规定不可以将目录当成文件来写，所以这里首先判断文件夹的打开权限，如果以可写打开的，则不予通过。
@@ -429,9 +437,11 @@ int open_namei(const char * pathname, int flag, int mode, struct m_inode ** res_
         iput(inode);
         return -EPERM;
     }
-    /// 走到这里，满足
-    /// 1.如果是目录，则只读方式打开。
-    /// 2.inode 的访问权限具备 flag 要求的权限。
+
+    /// 3.返回 inode。
+    ///     走到这里，满足：
+    ///     1).如果是目录，则只读方式打开。
+    ///     2).inode 的访问权限具备 flag 要求的权限。
     inode->i_atime = CURRENT_TIME;      ///< 修改访问时间。
     if (flag & O_TRUNC)     ///< 截断文件
         truncate(inode);

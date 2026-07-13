@@ -315,7 +315,7 @@ struct m_inode * get_pipe_inode(void)
 }
 
 /**
- * @brief 读取 inode。
+ * @brief 读取 inode，将 inode[nr] 从分区中的 inode 表中读取出来。
  * @param dev 设备号。
  * @param nr inode号。
  * @details 先从 inode_table 中查看该 inode 是否已经在 inode_table 中了，如果不在，就获取一个空闲的 inode，并将该 inode 从磁盘中读取出来。

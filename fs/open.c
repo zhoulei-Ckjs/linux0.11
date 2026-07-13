@@ -144,7 +144,7 @@ int sys_open(const char * filename, int flag, int mode)     ///< filename = /dev
         return -EINVAL;
     current->close_on_exec &= ~(1 << fd);   ///< 在执行exec时默认不关闭该文件描述符。
 
-    /* 在全局文件表中找一个空闲的文件对象 */
+    /// 1.在全局文件表中找一个空闲的文件对象
     f = 0 + file_table;                     ///< f 指向全局文件表的首地址。
     for (i = 0 ; i < NR_FILE ; i++, f++)
         if (!f->f_count)
@@ -153,21 +153,28 @@ int sys_open(const char * filename, int flag, int mode)     ///< filename = /dev
         return -EINVAL;
 
     (current->filp[fd] = f)->f_count++;     ///< 更新进程打开文件指针，更新文件引用计数。
+    
+    /// 2.打开文件，获取文件 inode。
     if ((i = open_namei(filename, flag, mode, &inode)) < 0)     ///< flag = O_RDWR
     {
+        /// 处理文件打开失败。
         current->filp[fd] = NULL;
         f->f_count = 0;
         return i;
     }
 /* ttys are somewhat special (ttyxx major==4, tty major==5) */
     if (S_ISCHR(inode->i_mode))
-        if (MAJOR(inode->i_zone[0])==4) {
-            if (current->leader && current->tty<0) {
+        if (MAJOR(inode->i_zone[0])==4)
+        {
+            if (current->leader && current->tty<0) 
+            {
                 current->tty = MINOR(inode->i_zone[0]);
                 tty_table[current->tty].pgrp = current->pgrp;
             }
-        } else if (MAJOR(inode->i_zone[0])==5)
-            if (current->tty<0) {
+        } 
+        else if (MAJOR(inode->i_zone[0])==5)
+            if (current->tty<0) 
+            {
                 iput(inode);
                 current->filp[fd]=NULL;
                 f->f_count=0;

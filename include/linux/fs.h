@@ -195,7 +195,8 @@ struct d_super_block {
  */
 struct dir_entry
 {
-    unsigned short inode;       ///< 索引节点编号。
+    unsigned short inode;       ///< 索引节点编号。这个 i_num 是和硬盘中 inode 表在逻辑熵是严格对应的，i_num = 1 则表示硬盘中 inode 表的第一个 inode，同理后面的所有。
+        ///< 所以这个 i_num 最小就是 1，代表 ROOT_INO。
     char name[NAME_LEN];        ///< 文件名。固定长度字符数组。
 };
 

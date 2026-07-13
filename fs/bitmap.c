@@ -165,9 +165,10 @@ void free_inode(struct m_inode * inode)
 }
 
 /**
- * @brief 申请新的 inode。
+ * @brief 申请新的 inode，主要是操作 inode 位图，依据 inode 位图来找到空闲 inode 号。
  * @param dev 设备号
- * @details 从设备上找到第一个空闲的 inode。通过设备号获取超级块然后访问超级块的 inode 位图，进而找到第一个 inode。
+ * @details 从 inode_table 上找到第一个空闲的 inode 来使用，将从分区上获取的空闲 inode 信息填写到这个 inode 上，主要是填写 i_num 信息（分区上 inode 位图中空闲 inode 序号）。
+ * 通过设备号获取超级块然后访问超级块的 inode 位图，进而找到第一个空闲的 inode。
  */
 struct m_inode * new_inode(int dev)
 {
