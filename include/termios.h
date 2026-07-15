@@ -51,13 +51,18 @@ struct termio {
 };
 
 #define NCCS 17
-struct termios {
-	unsigned long c_iflag;		/* input mode flags */
-	unsigned long c_oflag;		/* output mode flags */
-	unsigned long c_cflag;		/* control mode flags */
-	unsigned long c_lflag;		/* local mode flags */
+
+/**
+ * @brief 终端属性配置。
+ */
+struct termios
+{
+	unsigned long c_iflag;		/* 输入模式 */
+	unsigned long c_oflag;		/* 输出模式 */
+	unsigned long c_cflag;		/* 控制模式 */
+	unsigned long c_lflag;		/* 本地模式 */
 	unsigned char c_line;		/* line discipline */
-	unsigned char c_cc[NCCS];	/* control characters */
+	unsigned char c_cc[NCCS];	/* 特殊控制字符 */
 };
 
 /* c_cc characters */

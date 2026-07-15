@@ -162,17 +162,18 @@ int sys_open(const char * filename, int flag, int mode)     ///< filename = /dev
         f->f_count = 0;
         return i;
     }
-/* ttys are somewhat special (ttyxx major==4, tty major==5) */
+
+    /// 3.字符设备文件。ttys are somewhat special (ttyxx major == 4, tty major==5)
     if (S_ISCHR(inode->i_mode))
-        if (MAJOR(inode->i_zone[0])==4)
+        if (MAJOR(inode->i_zone[0]) == 4)       ///< major == 4 是 /dev/tty0（当前虚拟终端）、/dev/tty1 ~ /dev/tty63（虚拟终端）
         {
-            if (current->leader && current->tty<0) 
+            if (current->leader && current->tty < 0)    ///< 如果是进程组 leader，但是没有绑定终端。
             {
-                current->tty = MINOR(inode->i_zone[0]);
-                tty_table[current->tty].pgrp = current->pgrp;
+                current->tty = MINOR(inode->i_zone[0]);         ///< 设置该进程的 tty 号。
+                tty_table[current->tty].pgrp = current->pgrp;   ///< 
             }
         } 
-        else if (MAJOR(inode->i_zone[0])==5)
+        else if (MAJOR(inode->i_zone[0]) == 5)
             if (current->tty<0) 
             {
                 iput(inode);

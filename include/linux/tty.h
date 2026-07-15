@@ -42,7 +42,8 @@ struct tty_queue {
 #define STOP_CHAR(tty) ((tty)->termios.c_cc[VSTOP])
 #define SUSPEND_CHAR(tty) ((tty)->termios.c_cc[VSUSP])
 
-struct tty_struct {
+struct tty_struct
+{
 	struct termios termios;
 	int pgrp;
 	int stopped;
@@ -50,7 +51,7 @@ struct tty_struct {
 	struct tty_queue read_q;
 	struct tty_queue write_q;
 	struct tty_queue secondary;
-	};
+};
 
 extern struct tty_struct tty_table[];
 

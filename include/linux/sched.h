@@ -90,7 +90,10 @@ struct task_struct
 /* various fields */
     int exit_code;
     unsigned long start_code,end_code,end_data,brk,start_stack;
-    long pid,father,pgrp,session,leader;
+    long pid,father;
+    long pgrp;                  ///< 进程组 id。
+    long session;
+    long leader;                ///< 进程组 leader（process group leader）的标志位，表示该进程是否是其所属进程组的组长进程。
     unsigned short uid;         ///< 启动该进程的实际用户，用于系统记账、日志记录、邮件归属等，不参与权限检查。
     unsigned short euid;        ///< 内核进行权限检查的用户。
     unsigned short suid;        ///< 记录 euid 的“备份值”。
@@ -101,7 +104,7 @@ struct task_struct
     long utime,stime,cutime,cstime,start_time;
     unsigned short used_math;
 /* file system info */
-    int tty;        /* -1 if no tty, so it must be signed */
+    int tty;                    ///< 终端号，-1 if no tty, so it must be signed。
     unsigned short umask;       ///< 权限屏蔽字，它指定了在创建文件时必须被关闭的权限位。
     struct m_inode * pwd;       ///< 进程的当前工作目录的inode。
     struct m_inode * root;      ///< 进程的根目录（/目录）。

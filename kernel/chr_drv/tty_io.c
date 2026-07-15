@@ -48,7 +48,8 @@
 #define O_NLRET(tty)	_O_FLAG((tty),ONLRET)
 #define O_LCUC(tty)	_O_FLAG((tty),OLCUC)
 
-struct tty_struct tty_table[] = {
+struct tty_struct tty_table[] = 
+{
 	{
 		{ICRNL,		/* change incoming CR to NL */
 		OPOST|ONLCR,	/* change outgoing NL to CRNL */
@@ -62,7 +63,8 @@ struct tty_struct tty_table[] = {
 		{0,0,0,0,""},		/* console read-queue */
 		{0,0,0,0,""},		/* console write-queue */
 		{0,0,0,0,""}		/* console secondary queue */
-	},{
+	},
+	{
 		{0, /* no translation */
 		0,  /* no translation */
 		B2400 | CS8,
@@ -75,7 +77,8 @@ struct tty_struct tty_table[] = {
 		{0x3f8,0,0,0,""},		/* rs 1 */
 		{0x3f8,0,0,0,""},
 		{0,0,0,0,""}
-	},{
+	},
+	{
 		{0, /* no translation */
 		0,  /* no translation */
 		B2400 | CS8,
