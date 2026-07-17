@@ -42,15 +42,18 @@ struct tty_queue {
 #define STOP_CHAR(tty) ((tty)->termios.c_cc[VSTOP])
 #define SUSPEND_CHAR(tty) ((tty)->termios.c_cc[VSUSP])
 
+/**
+ * @brief 终端设备数据结构
+ */
 struct tty_struct
 {
-	struct termios termios;
-	int pgrp;
-	int stopped;
-	void (*write)(struct tty_struct * tty);
-	struct tty_queue read_q;
-	struct tty_queue write_q;
-	struct tty_queue secondary;
+	struct termios termios;						///< 终端配置（波特率、回显、控制字符等）。
+	int pgrp;									///< 当前前台进程组 ID。
+	int stopped;								///< 输出暂停标志。
+	void (*write)(struct tty_struct * tty);		///< 驱动层写函数。
+	struct tty_queue read_q;					///< 输入队列。
+	struct tty_queue write_q;					///< 用户写入数据缓冲。
+	struct tty_queue secondary;					///< 次级队列。
 };
 
 extern struct tty_struct tty_table[];

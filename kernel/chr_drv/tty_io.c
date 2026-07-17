@@ -50,13 +50,16 @@
 
 struct tty_struct tty_table[] = 
 {
+	/// /dev/tty1
 	{
-		{ICRNL,		/* change incoming CR to NL */
-		OPOST|ONLCR,	/* change outgoing NL to CRNL */
-		0,
-		ISIG | ICANON | ECHO | ECHOCTL | ECHOKE,
-		0,		/* console termio */
-		INIT_C_CC},
+		{
+			ICRNL,			/* 输入模式：将回车更换为换行。*/
+			OPOST|ONLCR,	/* 输出模式：启用输出处理 | 将换行更换为回车+换行。*/
+			0,
+			ISIG | ICANON | ECHO | ECHOCTL | ECHOKE,	/* 自动将键盘输入转换为信号 | 终端以行为单位处理输入 | 启用输入回显 | 控制字符^X显示 | 删除操作回显为^H */
+			0,		/* console termio */
+			INIT_C_CC
+		},
 		0,			/* initial pgrp */
 		0,			/* initial stopped */
 		con_write,

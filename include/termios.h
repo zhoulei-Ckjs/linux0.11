@@ -93,7 +93,7 @@ struct termios
 #define ISTRIP	0000040
 #define INLCR	0000100
 #define IGNCR	0000200
-#define ICRNL	0000400
+#define ICRNL	0000400		/* 当设置 ICRNL 时，终端会将输入的 CR（Carriage Return，回车符，ASCII=0x0D）自动转换为 NL（Line Feed，换行符，ASCII=0x0A */
 #define IUCLC	0001000
 #define IXON	0002000
 #define IXANY	0004000
@@ -101,9 +101,9 @@ struct termios
 #define IMAXBEL	0020000
 
 /* c_oflag bits */
-#define OPOST	0000001
+#define OPOST	0000001		/* 当设置 OPOST 时，启用输出处理（如 NL→CR/NL 转换）；若关闭 OPOST，所有输出数据按原始字节发送，不做任何转换。*/
 #define OLCUC	0000002
-#define ONLCR	0000004
+#define ONLCR	0000004		/* 当设置 ONLCR 时，终端会将输出的 NL（Line Feed，换行符，ASCII=0x0A）自动转换为 CR/NL（Carriage Return + Line Feed，即 \r\n）。*/
 #define OCRNL	0000010
 #define ONOCR	0000020
 #define ONLRET	0000040
@@ -171,18 +171,18 @@ struct termios
 #define PARODD CPARODD
 
 /* c_lflag bits */
-#define ISIG	0000001
-#define ICANON	0000002
+#define ISIG	0000001			/* 将ctrl+c、ctrl+z等转换为信号。*/
+#define ICANON	0000002			/* 终端以行为单位处理输入（需按回车键才提交整行）。*/
 #define XCASE	0000004
-#define ECHO	0000010
+#define ECHO	0000010			/* 启用输入回显。用户在终端输入的每个字符会立即显示在屏幕上。*/
 #define ECHOE	0000020
 #define ECHOK	0000040
 #define ECHONL	0000100
 #define NOFLSH	0000200
 #define TOSTOP	0000400
-#define ECHOCTL	0001000
+#define ECHOCTL	0001000			/* 当启用 ECHOCTL 时，控制字符（非打印字符）会以 ^X 的形式回显 （如 Ctrl+C 显示为 ^C）。*/
 #define ECHOPRT	0002000
-#define ECHOKE	0004000
+#define ECHOKE	0004000			/* 当启用 ECHOKE 时，删除操作（如 Backspace/DEL）会以 ^H 的形式回显 （即 Backspace 键按一下，屏幕显示 ^H）；当禁用 ECHOKE 时，删除操作不回显 （但依然执行删除）。 */
 #define FLUSHO	0010000
 #define PENDIN	0040000
 #define IEXTEN	0100000

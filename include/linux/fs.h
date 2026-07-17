@@ -114,7 +114,7 @@ struct m_inode
     unsigned char i_gid;            ///< 文件所属组的标识符
     unsigned char i_nlinks;         ///< 硬链接数。
     unsigned short i_zone[9];       ///< 数据块。文件实际存储数据的物理块号，前 7 个直接数据物理块号，第 8 个为一级指针，第 9 个为二级指针。
-                                    ///< 如果是块设备，则 i_zone[0] 存储了设备号。
+                                    ///< 如果是字符/块设备，则 i_zone[0] 存储了设备号。（Linux 一切皆文件，一切皆 inode）。
                                     ///< 如果是目录，存储目录项。
 
     /* 下面这些属性是内存 inode 独有的，内存 inode 继承了磁盘 inode */
