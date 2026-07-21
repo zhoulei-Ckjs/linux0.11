@@ -61,7 +61,7 @@ struct termios
 	unsigned long c_oflag;		/* 输出模式 */
 	unsigned long c_cflag;		/* 控制模式 */
 	unsigned long c_lflag;		/* 本地模式 */
-	unsigned char c_line;		/* line discipline */
+	unsigned char c_line;		/* 行规程，0表示标准终端处理 */
 	unsigned char c_cc[NCCS];	/* 特殊控制字符 */
 };
 
@@ -146,7 +146,7 @@ struct termios
 #define  B600	0000010
 #define  B1200	0000011
 #define  B1800	0000012
-#define  B2400	0000013
+#define  B2400	0000013			/* 表示波特率为 2400 bps（bits per second） */
 #define  B4800	0000014
 #define  B9600	0000015
 #define  B19200	0000016
@@ -157,7 +157,7 @@ struct termios
 #define   CS5	0000000
 #define   CS6	0000020
 #define   CS7	0000040
-#define   CS8	0000060
+#define   CS8	0000060			/* 表示数据位为 8 位，终端设备以 8 个数据位（无校验位）进行串行通信。每次通过串口发送/接收 1 字节（8 bits），不附加校验位，按时间顺序一位位传输。*/
 #define CSTOPB	0000100
 #define CREAD	0000200
 #define CPARENB	0000400

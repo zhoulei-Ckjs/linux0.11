@@ -163,18 +163,18 @@ int sys_open(const char * filename, int flag, int mode)     ///< filename = /dev
         return i;
     }
 
-    /// 3.字符设备文件。ttys are somewhat special (ttyxx major == 4, tty major==5)
+    /// 3.字符设备文件。ttys are somewhat special (ttyxx major == 4, tty major == 5)
     if (S_ISCHR(inode->i_mode))
         if (MAJOR(inode->i_zone[0]) == 4)       ///< major == 4 是 /dev/tty0（当前虚拟终端）、/dev/tty1 ~ /dev/tty63（虚拟终端）
         {
             if (current->leader && current->tty < 0)    ///< 如果是进程组 leader，但是没有绑定终端。
             {
-                current->tty = MINOR(inode->i_zone[0]);         ///< 设置该进程的 tty 号。
-                tty_table[current->tty].pgrp = current->pgrp;   ///< 
+                current->tty = MINOR(inode->i_zone[0]);         ///< 设置当前进程的 tty 号。
+                tty_table[current->tty].pgrp = current->pgrp;   ///< 设置该终端的当前前台进程组 ID。
             }
         } 
-        else if (MAJOR(inode->i_zone[0]) == 5)
-            if (current->tty<0) 
+        else if (MAJOR(inode->i_zone[0]) == 5)  ///< 辅助终端设备，对应 /dev/tty、/dev/console 等特殊终端设备 。
+            if (current->tty < 0) 
             {
                 iput(inode);
                 current->filp[fd]=NULL;
@@ -184,6 +184,7 @@ int sys_open(const char * filename, int flag, int mode)     ///< filename = /dev
 /* Likewise with block-devices: check for floppy_change */
     if (S_ISBLK(inode->i_mode))
         check_disk_change(inode->i_zone[0]);
+
     f->f_mode = inode->i_mode;
     f->f_flags = flag;
     f->f_count = 1;

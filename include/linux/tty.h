@@ -13,10 +13,14 @@
 
 #define TTY_BUF_SIZE 1024
 
-struct tty_queue {
-	unsigned long data;
-	unsigned long head;
-	unsigned long tail;
+/**
+ * @brief 终端设备的环形缓冲区，管理终端的输入/输出数据流。
+ */
+struct tty_queue
+{
+	unsigned long data;					/* 端口 */
+	unsigned long head;					/* 新数据入队位置 */
+	unsigned long tail;					/* 数据出队位置 */
 	struct task_struct * proc_list;
 	char buf[TTY_BUF_SIZE];
 };
@@ -58,12 +62,14 @@ struct tty_struct
 
 extern struct tty_struct tty_table[];
 
-/*	intr=^C		quit=^|		erase=del	kill=^U
-	eof=^D		vtime=\0	vmin=\1		sxtc=\0
-	start=^Q	stop=^S		susp=^Z		eol=\0
-	reprint=^R	discard=^U	werase=^W	lnext=^V
-	eol2=\0
-*/
+/**
+ * @brief 特殊控制字符
+ *  intr=^C		quit=^|		erase=del	kill=^U
+ *  eof=^D		vtime=\0	vmin=\1		sxtc=\0
+ *  start=^Q	stop=^S		susp=^Z		eol=\0
+ *  reprint=^R	discard=^U	werase=^W	lnext=^V
+ *  eol2=\0
+ */
 #define INIT_C_CC "\003\034\177\025\004\0\1\0\021\023\032\0\022\017\027\026\0"
 
 void rs_init(void);
