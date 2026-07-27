@@ -109,25 +109,17 @@ void inline invalidate_buffers(int dev)
     }
 }
 
-/*
- * This routine checks whether a floppy has been changed, and
- * invalidates all buffer-cache-entries in that case. This
- * is a relatively slow routine, so we have to try to minimize using
- * it. Thus it is called only upon a 'mount' or 'open'. This
- * is the best way of combining speed and utility, I think.
- * People changing diskettes in the middle of an operation deserve
- * to loose :-)
- *
- * NOTE! Although currently this is only for floppies, the idea is
- * that any additional removable block-device will use this routine,
- * and that mount/open needn't know that floppies/whatever are
- * special.
+/**
+ * @brief 例行检查软盘是否已更换。
+ * @param dev 设备号
+ * @details 如果软盘已被更换，则检查所有 buffer-cache。这个过程相对缓慢，因此应当尽量减少使用次数。Linus 认为在系统运行期间更换软盘的人活该失败！
+ * 注意！虽然当前只使用于软盘, 但想法是任何移除 block-device 都将使用这个检查，并且 mount/open 不应感知到此检查。
  */
 void check_disk_change(int dev)     ///< 对 floppy 的检查
 {
     int i;
 
-    if (MAJOR(dev) != 2)
+    if (MAJOR(dev) != 2)            ///< 如果不是软盘设备，则退出检查（软盘设备主设备号为 2）。
         return;
     if (!floppy_change(dev & 0x03))
         return;
