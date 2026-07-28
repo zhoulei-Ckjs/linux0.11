@@ -1,13 +1,7 @@
-/*
- *  linux/kernel/printk.c
- *
- *  (C) 1991  Linus Torvalds
- */
-
-/*
- * When in kernel-mode, we cannot use printf, as fs is liable to
- * point to 'interesting' things. Make a printf with fs-saving, and
- * all is well.
+/**
+ * @fileinfo 当处于内核模式（kernel-mode）时，我们不能使用标准 printf，因为段寄存器 fs 很可能指向一些「令人担忧的」（'interesting'）内存区域（例如用户态地址空间）。
+ * 因此我们自己实现一个 printf，在调用前先保存并恢复 fs 寄存器——这样一切就稳妥了。
+ * 早期 fs 寄存器用来指向用户空间。
  */
 #include <stdarg.h>
 #include <stddef.h>

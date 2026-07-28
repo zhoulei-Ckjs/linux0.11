@@ -130,12 +130,9 @@ void floppy_deselect(unsigned int nr)
 	wake_up(&wait_on_floppy_select);
 }
 
-/*
- * floppy-change is never called from an interrupt, so we can relax a bit
- * here, sleep etc. Note that floppy-on tries to set current_DOR to point
- * to the desired drive, but it will probably not survive the sleep if
- * several floppies are used at the same time: thus the loop.
- */
+/// 软盘变更检测（floppy-change）从未在中断上下文中被调用，因此我们可以在这里放松一些——可以使用 sleep() 等阻塞操作。
+/// floppy_on() 函数会尝试设置 current_DOR 指向目标驱动器，但如果多个软盘同时使用，它很可能会在 sleep() 期间被覆盖（覆盖为其他驱动器的值），因此采用了循环重试机制（the loop）。
+/// @param nr 软盘序号（表示第几块软盘）。
 int floppy_change(unsigned int nr)
 {
 repeat:

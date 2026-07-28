@@ -1,19 +1,9 @@
-/*
- *  linux/kernel/panic.c
- *
- *  (C) 1991  Linus Torvalds
- */
-
-/*
- * This function is used through-out the kernel (includeinh mm and fs)
- * to indicate a major problem.
- */
 #include <linux/kernel.h>
 #include <linux/sched.h>
 
 void sys_sync(void);	/* it's really int */
 
-volatile void panic(const char * s)		///< volatile 1.·ÀÖ¹±àÒëÆ÷ÓÅ»¯µôÕâ¸öº¯Êý£»2.º¯ÊýÄÚµÄ²Ù×÷Ë³Ðò²»»á±»ÖØÅÅ£»3.ËùÓÐÄÚ´æ·ÃÎÊ¶¼»áÊµ¼ÊÖ´ÐÐ¡£
+volatile void panic(const char * s)		///< volatile 1.é˜²æ­¢ç¼–è¯‘å™¨ä¼˜åŒ–æŽ‰è¿™ä¸ªå‡½æ•°ï¼›2.å‡½æ•°å†…çš„æ“ä½œé¡ºåºä¸ä¼šè¢«é‡æŽ’ï¼›3.æ‰€æœ‰å†…å­˜è®¿é—®éƒ½ä¼šå®žé™…æ‰§è¡Œã€‚
 {
 	printk("Kernel panic: %s\n\r",s);
 	if (current == task[0])

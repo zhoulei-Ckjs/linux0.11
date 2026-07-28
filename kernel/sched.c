@@ -204,12 +204,15 @@ static int  mon_timer[4]={0,0,0,0};
 static int moff_timer[4]={0,0,0,0};
 unsigned char current_DOR = 0x0C;
 
+/// @brief 
+/// @param nr 软盘编号
+/// @return 
 int ticks_to_floppy_on(unsigned int nr)
 {
     extern unsigned char selected;
     unsigned char mask = 0x10 << nr;
 
-    if (nr>3)
+    if (nr > 3)
         panic("floppy_on: nr>3");
     moff_timer[nr]=10000;        /* 100 s = very big :-) */
     cli();                /* use floppy_off to turn it off */
