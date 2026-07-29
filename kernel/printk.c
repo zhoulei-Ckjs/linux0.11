@@ -12,13 +12,17 @@ static char buf[1024];
 
 extern int vsprintf(char * buf, const char * fmt, va_list args);
 
+/// @brief 
+/// @param fmt 格式化输出字符串。
+/// @note 压栈顺序是从右向左，所以最低位置为fmt。 
+/// @return 
 int printk(const char *fmt, ...)
 {
 	va_list args;
 	int i;
 
 	va_start(args, fmt);
-	i=vsprintf(buf,fmt,args);
+	i = vsprintf(buf, fmt, args);
 	va_end(args);
 	__asm__("push %%fs\n\t"
 		"push %%ds\n\t"

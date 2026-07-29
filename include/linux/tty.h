@@ -77,6 +77,12 @@ void con_init(void);
 void tty_init(void);
 
 int tty_read(unsigned c, char * buf, int n);
+
+/**
+ * @brief 终端输出。
+ * @param buf 待输出字符串。
+ * @param count 待输出字节个数。
+ */
 int tty_write(unsigned c, char * buf, int n);
 
 void rs_write(struct tty_struct * tty);

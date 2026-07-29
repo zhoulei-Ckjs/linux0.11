@@ -1,7 +1,8 @@
-23/2272		103		22
+209/2295		104		22
 
-
-printk.c:15:20
+tty_io.c:148:150
+tty_io.c:305:316
+printk.c:19:33
 panic.c:6:8
 sched.c:210:216
 sched.c:233:236

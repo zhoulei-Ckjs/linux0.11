@@ -7,7 +7,7 @@ typedef char *va_list;  ///< 可变参
 #define __va_rounded_size(TYPE)  \
   (((sizeof (TYPE) + sizeof (int) - 1) / sizeof (int)) * sizeof (int))
 
-/// @brief
+/// @brief 定位可变参第一个参数。
 /// @note sparc 为一种架构，由 Oracle 支持，应用于高端企业级，或嵌入式领域
 #ifndef __sparc__
     #define va_start(AP, LASTARG) 						\
