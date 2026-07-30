@@ -147,11 +147,11 @@ static void sleep_if_empty(struct tty_queue * queue)
 /// @param queue 终端任务队列
 static void sleep_if_full(struct tty_queue * queue)
 {
-	if (!FULL(*queue))
+	if (!FULL(*queue))		///< 不满直接返回。
 		return;
 	cli();
-	while (!current->signal && LEFT(*queue)<128)
-		interruptible_sleep_on(&queue->proc_list);
+	while (!current->signal && LEFT(*queue) < 128)		///< 当 没有信号 && 剩余空间少于128字节时，睡眠。
+		interruptible_sleep_on(&queue->proc_list);		///<
 	sti();
 }
 
@@ -305,7 +305,7 @@ int tty_read(unsigned channel, char * buf, int nr)
 	return (b-buf);
 }
 
-int tty_write(unsigned channel, char * buf, int nr)
+int tty_write(unsigned channel, char * buf, int nr)		///< channel = 0
 {
 	static cr_flag = 0;
 	struct tty_struct * tty;

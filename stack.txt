@@ -1,7 +1,8 @@
-209/2295		104		22
+5/2504		105		23
 
-tty_io.c:148:150
-tty_io.c:305:316
+sched.c:165:180
+tty_io.c:148:154
+tty_io.c:308:319
 printk.c:19:33
 panic.c:6:8
 sched.c:210:216

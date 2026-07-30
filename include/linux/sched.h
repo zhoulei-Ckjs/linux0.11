@@ -84,7 +84,7 @@ struct task_struct
     long state;             /* 描述进程状态：-1 unrunnable, 0 runnable, >0 stopped */
     long counter;           /* 当前进程剩余时间片 */
     long priority;
-    long signal;
+    long signal;                ///< 信号位图。
     struct sigaction sigaction[32];
     long blocked;    /* bitmap of masked signals */
 /* various fields */

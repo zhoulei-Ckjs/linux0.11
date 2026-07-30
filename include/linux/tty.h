@@ -21,16 +21,16 @@ struct tty_queue
 	unsigned long data;					/* 端口 */
 	unsigned long head;					/* 新数据入队位置 */
 	unsigned long tail;					/* 数据出队位置 */
-	struct task_struct * proc_list;
+	struct task_struct * proc_list;		/* 睡眠在此队列的进程 */
 	char buf[TTY_BUF_SIZE];
 };
 
-#define INC(a) ((a) = ((a)+1) & (TTY_BUF_SIZE-1))
-#define DEC(a) ((a) = ((a)-1) & (TTY_BUF_SIZE-1))
-#define EMPTY(a) ((a).head == (a).tail)
-#define LEFT(a) (((a).tail-(a).head-1)&(TTY_BUF_SIZE-1))
+#define INC(a) ((a) = ((a)+1) & (TTY_BUF_SIZE-1))			/* 环形队列增加 */
+#define DEC(a) ((a) = ((a)-1) & (TTY_BUF_SIZE-1))			/* 环形队列减少 */
+#define EMPTY(a) ((a).head == (a).tail)						/* 环形队列是否为空，初始时 head==tail */
+#define LEFT(a) (((a).tail-(a).head-1)&(TTY_BUF_SIZE-1))	/* 剩余多少空间，tail 为下次读取位置，head 为下次写入位置；为空时 tail == head，LEFT 结果为 0x3FF，即剩余最大空间；往里写入时就是 head 一直在增加，环形队列，超越最大位置后回环，后再 head-1 的位置达到最大，表示写满了。*/
 #define LAST(a) ((a).buf[(TTY_BUF_SIZE-1)&((a).head-1)])
-#define FULL(a) (!LEFT(a))
+#define FULL(a) (!LEFT(a))									/* 剩余空间为 0 表示FULL。*/
 #define CHARS(a) (((a).head-(a).tail)&(TTY_BUF_SIZE-1))
 #define GETCH(queue,c) \
 (void)({c=(queue).buf[(queue).tail];INC((queue).tail);})

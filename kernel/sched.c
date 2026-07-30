@@ -103,7 +103,8 @@ void schedule(void)
 /* check alarm, wake up any interruptible tasks that have got a signal */
 
     for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
-        if (*p) {
+        if (*p) 
+        {
             if ((*p)->alarm && (*p)->alarm < jiffies) { ///< 如果有闹钟 && 闹钟到时间了。
                 (*p)->signal |= (1<<(SIGALRM-1));       ///< 加入时钟中断
                 (*p)->alarm = 0;
@@ -115,7 +116,8 @@ void schedule(void)
 
 /* this is the scheduler proper: */
 
-    while (1) {
+    while (1)
+    {
         c = -1;
         next = 0;
         i = NR_TASKS;
@@ -166,21 +168,23 @@ void interruptible_sleep_on(struct task_struct **p)
 {
     struct task_struct *tmp;
 
-    if (!p)
+    if (!p)         ///< 没有进程睡眠在这里，直接返回。
         return;
     if (current == &(init_task.task))
         panic("task[0] trying to sleep");
-    tmp=*p;
-    *p=current;
-repeat:    current->state = TASK_INTERRUPTIBLE;
-    schedule();
-    if (*p && *p != current) {
-        (**p).state=0;
+    tmp = *p;       ///< tmp 存储了旧的 *p
+    *p = current;   ///< 将当前进程加入到等待队列 p，*p 存储了自己。
+repeat:
+    current->state = TASK_INTERRUPTIBLE;
+    schedule();     ///< 进程切换
+    if (*p && *p != current)
+    {
+        (**p).state = 0;
         goto repeat;
     }
-    *p=NULL;
+    *p = NULL;
     if (tmp)
-        tmp->state=0;
+        tmp->state = 0;
 }
 
 /* 唤醒等待进程，让进程可以争抢时间片 */
