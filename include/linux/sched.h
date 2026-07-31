@@ -17,8 +17,8 @@
 #endif
 
 #define TASK_RUNNING            0       /* 可运行或等待被调度 */
-#define TASK_INTERRUPTIBLE      1       /* 可被中断 */
-#define TASK_UNINTERRUPTIBLE    2       /* 不可被中断 */
+#define TASK_INTERRUPTIBLE      1       /* 可被中断：进程处于睡眠或某种状态时，当有信号来临，可以响应事件，可以被唤醒并中断睡眠 */
+#define TASK_UNINTERRUPTIBLE    2       /* 不可被中断：进程处于睡眠或某种状态时，虽然有信号来临，但会屏蔽信号，暂时不响应 */
 #define TASK_ZOMBIE             3
 #define TASK_STOPPED            4
 

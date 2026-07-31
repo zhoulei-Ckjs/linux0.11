@@ -156,14 +156,18 @@ void sleep_on(struct task_struct **p)
         return;
     if (current == &(init_task.task))
         panic("task[0] trying to sleep");
-    tmp = *p;                               ///< tmp 存储了旧的 *p
+    tmp = *p;                               ///< tmp 存储了旧的 *p，即上一个 sleep 在队列 p 上的进程。
     *p = current;                           ///< 将当前进程加入到等待队列 p，*p 存储了自己。
-    current->state = TASK_UNINTERRUPTIBLE;  ///< 当前进程不可中断的状态，将自己阻塞，让其他进程去争抢时间片。
+    current->state = TASK_UNINTERRUPTIBLE;  ///< 当前进程不可中断的状态，将自己阻塞，让其他进程去争抢时间片。只能由 wakeup 唤醒。
     schedule();
     if (tmp)                                ///< 时间片轮转到此进程时，继续在此处执行。
         tmp->state = 0;                     ///< 激活自己的上一个等待进程，让上一个进程去争抢轮询时间片。
 }
 
+/**
+ * @brief 可中断睡眠。
+ * @details 睡眠到这个信号上，将 CPU 交给其他进程，自己变成 TASK_INTERRUPTIBLE。
+ */
 void interruptible_sleep_on(struct task_struct **p)
 {
     struct task_struct *tmp;
@@ -177,14 +181,15 @@ void interruptible_sleep_on(struct task_struct **p)
 repeat:
     current->state = TASK_INTERRUPTIBLE;
     schedule();     ///< 进程切换
-    if (*p && *p != current)
-    {
-        (**p).state = 0;
-        goto repeat;
+    if (*p && *p != current)        ///< current 是当前正在运行的进程，进入 schedule 后，进程切换，current 变为其他进程，但是当走下 schedule 后，current 又切换为当前进程。
+    {                               ///< *p != current，说明在 current 不在队列头，在它之上还有等待进程，这里是处理竞态，因为被唤醒了，一般说明自己是队列头，但是却又发现头不是自己，说明在这期间有其他进程又sleep到这个队列上了
+                                    ///< 所以这里发现了这个现象后，让自己睡眠，让队列头部进程运行。
+        (**p).state = 0;            ///< 让头部等待进程进入可被调度的状态。
+        goto repeat;                ///< 重新让当前进程睡眠。
     }
-    *p = NULL;
+    *p = NULL;                      ///< 这里需要自己清空队列，因为 interruptible_sleep_on 可能并不是由 wake_up 唤醒的（wake_up 会清理队列），可能是由信号等。
     if (tmp)
-        tmp->state = 0;
+        tmp->state = 0;             ///< 激活自己的上一个等待进程，让上一个进程去争抢轮询时间片。
 }
 
 /* 唤醒等待进程，让进程可以争抢时间片 */

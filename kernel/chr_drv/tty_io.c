@@ -142,16 +142,17 @@ static void sleep_if_empty(struct tty_queue * queue)
 		interruptible_sleep_on(&queue->proc_list);
 	sti();
 }
-
-/// @brief 
-/// @param queue 终端任务队列
+/**
+ * @brief 如果队列满了，就睡眠等待这个队列空闲。
+ * @param queue 终端任务队列
+ */ 
 static void sleep_if_full(struct tty_queue * queue)
 {
-	if (!FULL(*queue))		///< 不满直接返回。
+	if (!FULL(*queue))		///< 队列还有空间，则直接返回。
 		return;
 	cli();
-	while (!current->signal && LEFT(*queue) < 128)		///< 当 没有信号 && 剩余空间少于128字节时，睡眠。
-		interruptible_sleep_on(&queue->proc_list);		///<
+	while (!current->signal && LEFT(*queue) < 128)		///< 当 没有信号 && 剩余空间少于 128 字节时，睡眠。
+		interruptible_sleep_on(&queue->proc_list);		///< 可中断睡眠。
 	sti();
 }
 
