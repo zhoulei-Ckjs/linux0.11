@@ -1,5 +1,5 @@
 /**
- * @»ñÈ¡ addr ´¦µÄ×Ö·û¡£
+ * @è·å– addr å¤„çš„ä¸€å­—èŠ‚ã€‚
  */
 extern inline unsigned char get_fs_byte(const char * addr)
 {

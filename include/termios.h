@@ -53,12 +53,12 @@ struct termio {
 #define NCCS 17
 
 /**
- * @brief 终端属性配置。
+ * @brief 终端输入输出属性配置（terminal io）。
  */
 struct termios
 {
 	unsigned long c_iflag;		/* 输入模式 */
-	unsigned long c_oflag;		/* 输出模式 */
+	unsigned long c_oflag;		/* 输出模式。包含是否将换行转换为回车换行的配置。*/
 	unsigned long c_cflag;		/* 控制模式 */
 	unsigned long c_lflag;		/* 本地模式 */
 	unsigned char c_line;		/* 行规程，0表示标准终端处理 */
@@ -101,7 +101,7 @@ struct termios
 #define IMAXBEL	0020000
 
 /* c_oflag bits */
-#define OPOST	0000001		/* 当设置 OPOST 时，启用输出处理（如 NL→CR/NL 转换）；若关闭 OPOST，所有输出数据按原始字节发送，不做任何转换。*/
+#define OPOST	0000001		/* 当设置 OPOST 时，启用输出处理（如 NL->CR/NL 转换，回车->换行/回车）；若关闭 OPOST，所有输出数据按原始字节发送，不做任何转换。*/
 #define OLCUC	0000002
 #define ONLCR	0000004		/* 当设置 ONLCR 时，终端会将输出的 NL（Line Feed，换行符，ASCII=0x0A）自动转换为 CR/NL（Carriage Return + Line Feed，即 \r\n）。*/
 #define OCRNL	0000010

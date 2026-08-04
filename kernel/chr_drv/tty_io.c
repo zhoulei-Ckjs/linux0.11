@@ -1,14 +1,9 @@
-/*
- *  linux/kernel/tty_io.c
- *
- *  (C) 1991  Linus Torvalds
- */
 
 /*
- * 'tty_io.c' gives an orthogonal feeling to tty's, be they consoles
- * or rs-channels. It also implements echoing, cooked mode etc.
- *
- * Kill-line thanks to John T Kohl.
+ * 'tty_io.c' 'tty_io.c' 使终端（TTY）设备呈现出一种正交（即统一、通用）的编程接口，
+ * 无论它们是控制台（console）还是串口通道（如 RS-232 串行端口）。
+ * 此模块还实现了回显（echoing）、规范模式（cooked mode）等功能。
+ * “行删除”（kill-line）功能感谢 John T. Kohl 的贡献。
  */
 #include <ctype.h>
 #include <errno.h>
@@ -27,7 +22,7 @@
 
 #define _L_FLAG(tty,f)	((tty)->termios.c_lflag & f)
 #define _I_FLAG(tty,f)	((tty)->termios.c_iflag & f)
-#define _O_FLAG(tty,f)	((tty)->termios.c_oflag & f)
+#define _O_FLAG(tty,f)	((tty)->termios.c_oflag & f)	/* 判断输出 f 位是否存在。*/
 
 #define L_CANON(tty)	_L_FLAG((tty),ICANON)
 #define L_ISIG(tty)	_L_FLAG((tty),ISIG)
@@ -42,7 +37,7 @@
 #define I_CRNL(tty)	_I_FLAG((tty),ICRNL)
 #define I_NOCR(tty)	_I_FLAG((tty),IGNCR)
 
-#define O_POST(tty)	_O_FLAG((tty),OPOST)
+#define O_POST(tty)	_O_FLAG((tty),OPOST)		/* 是否包含 启用输出处理（如 NL->CR/NL 转换，回车->换行/回车）*/
 #define O_NLCR(tty)	_O_FLAG((tty),ONLCR)
 #define O_CRNL(tty)	_O_FLAG((tty),OCRNL)
 #define O_NLRET(tty)	_O_FLAG((tty),ONLRET)
@@ -317,13 +312,13 @@ int tty_write(unsigned channel, char * buf, int nr)		///< channel = 0
 	tty = channel + tty_table;
 	while (nr > 0)
 	{
-		sleep_if_full(&tty->write_q);
-		if (current->signal)
+		sleep_if_full(&tty->write_q);					///< 写入队列满了则睡眠在这里。
+		if (current->signal)							///< 若有信号位图，则停止输出。
 			break;
-		while (nr>0 && !FULL(tty->write_q)) 
+		while (nr > 0 && !FULL(tty->write_q)) 
 		{
-			c=get_fs_byte(b);
-			if (O_POST(tty)) 
+			c = get_fs_byte(b);							///< 获取 1 字节。
+			if (O_POST(tty)) 							///< 判断是否包含输出处理
 			{
 				if (c=='\r' && O_CRNL(tty))
 					c='\n';
@@ -346,7 +341,7 @@ int tty_write(unsigned channel, char * buf, int nr)		///< channel = 0
 		if (nr>0)
 			schedule();
 	}
-	return (b-buf);
+	return (b - buf);		///< 返回写了多少字节。
 }
 
 /*
