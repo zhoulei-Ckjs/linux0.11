@@ -34,8 +34,8 @@ struct tty_queue
 #define CHARS(a) (((a).head-(a).tail)&(TTY_BUF_SIZE-1))
 #define GETCH(queue,c) \
 (void)({c=(queue).buf[(queue).tail];INC((queue).tail);})
-#define PUTCH(c,queue) \
-(void)({(queue).buf[(queue).head]=(c);INC((queue).head);})
+#define PUTCH(c,queue) 										/* 往输出缓冲区中写入一个字符。*/ \
+(void)({(queue).buf[(queue).head]=(c);INC((queue).head);})	/* (void)( ... ) 强制丢弃返回值。({ ... }) —— GNU C 的 statement expression，允许在圆括号内写多个语句，最终表达式的值作为整个块的值。*/
 
 #define INTR_CHAR(tty) ((tty)->termios.c_cc[VINTR])
 #define QUIT_CHAR(tty) ((tty)->termios.c_cc[VQUIT])

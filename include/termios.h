@@ -102,11 +102,11 @@ struct termios
 
 /* c_oflag bits */
 #define OPOST	0000001		/* 当设置 OPOST 时，启用输出处理（如 NL->CR/NL 转换，回车->换行/回车）；若关闭 OPOST，所有输出数据按原始字节发送，不做任何转换。*/
-#define OLCUC	0000002
+#define OLCUC	0000002		/* 输出时将小写字母转换为大写字母。*/
 #define ONLCR	0000004		/* 当设置 ONLCR 时，终端会将输出的 NL（Line Feed，换行符，ASCII=0x0A）自动转换为 CR/NL（Carriage Return + Line Feed，即 \r\n）。*/
-#define OCRNL	0000010
+#define OCRNL	0000010		/* 将输出的回车（Carriage Return, \r）自动转换为换行（Line Feed, \n）*/
 #define ONOCR	0000020
-#define ONLRET	0000040
+#define ONLRET	0000040		/* 当输出 \n（换行）时，自动附加一个 \r（回车）*/
 #define OFILL	0000100
 #define OFDEL	0000200
 #define NLDLY	0000400

@@ -38,10 +38,10 @@
 #define I_NOCR(tty)	_I_FLAG((tty),IGNCR)
 
 #define O_POST(tty)	_O_FLAG((tty),OPOST)		/* 是否包含 启用输出处理（如 NL->CR/NL 转换，回车->换行/回车）*/
-#define O_NLCR(tty)	_O_FLAG((tty),ONLCR)
-#define O_CRNL(tty)	_O_FLAG((tty),OCRNL)
-#define O_NLRET(tty)	_O_FLAG((tty),ONLRET)
-#define O_LCUC(tty)	_O_FLAG((tty),OLCUC)
+#define O_NLCR(tty)	_O_FLAG((tty),ONLCR)		/* \n 转 \r */
+#define O_CRNL(tty)	_O_FLAG((tty),OCRNL)		/* 将输出的回车（Carriage Return, \r）自动转换为换行（Line Feed, \n）*/
+#define O_NLRET(tty)	_O_FLAG((tty),ONLRET)	/* 当输出 \n（换行）时，自动附加一个 \r（回车）*/
+#define O_LCUC(tty)	_O_FLAG((tty),OLCUC)		/* 输出时将小写字母转换为大写字母。*/
 
 /**
  * @brief 终端结构体
@@ -318,22 +318,23 @@ int tty_write(unsigned channel, char * buf, int nr)		///< channel = 0
 		while (nr > 0 && !FULL(tty->write_q)) 
 		{
 			c = get_fs_byte(b);							///< 获取 1 字节。
-			if (O_POST(tty)) 							///< 判断是否包含输出处理
+			if (O_POST(tty)) 							///< 判断是否包含输出处理（如 NL->CR/NL 转换，回车->换行/回车）
 			{
-				if (c=='\r' && O_CRNL(tty))
-					c='\n';
-				else if (c=='\n' && O_NLRET(tty))
-					c='\r';
-				if (c=='\n' && !cr_flag && O_NLCR(tty)) 
+				if (c == '\r' && O_CRNL(tty))			///< 回车转换行
+					c = '\n';
+				else if (c == '\n' && O_NLRET(tty))
+					c = '\r';
+				if (c == '\n' && !cr_flag && O_NLCR(tty)) 
 				{
 					cr_flag = 1;
-					PUTCH(13,tty->write_q);
+					PUTCH(13, tty->write_q);			///< 往输出缓冲区中写入一个字符。
 					continue;
 				}
 				if (O_LCUC(tty))
-					c=toupper(c);
+					c = toupper(c);
 			}
-			b++; nr--;
+			b++;
+			nr--;
 			cr_flag = 0;
 			PUTCH(c,tty->write_q);
 		}
