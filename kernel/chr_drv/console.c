@@ -1,10 +1,4 @@
 /*
- *  linux/kernel/console.c
- *
- *  (C) 1991  Linus Torvalds
- */
-
-/*
  *	console.c
  *
  * This module implements the console io functions
@@ -69,9 +63,9 @@ static unsigned short	video_erase_char;	/* Char+Attrib to erase with	*/
 static unsigned long	origin;		/* Used for EGA/VGA fast scroll	*/
 static unsigned long	scr_end;	/* Used for EGA/VGA fast scroll	*/
 static unsigned long	pos;
-static unsigned long	x,y;
+static unsigned long	x,y;				///< 当前显示字符在显示器上的 x y 坐标。
 static unsigned long	top,bottom;
-static unsigned long	state=0;
+static unsigned long	state = 0;
 static unsigned long	npar,par[NPAR];
 static unsigned long	ques=0;
 static unsigned char	attr=0x07;
@@ -447,13 +441,17 @@ void con_write(struct tty_struct * tty)
 	int nr;
 	char c;
 
-	nr = CHARS(tty->write_q);
-	while (nr--) {
-		GETCH(tty->write_q,c);
-		switch(state) {
+	nr = CHARS(tty->write_q);			///< 获取唤醒队列中字符个数。
+	while (nr--) 
+	{
+		GETCH(tty->write_q, c);			///< 从输出缓冲区中获取一个字符。
+		switch(state) 
+		{
 			case 0:
-				if (c>31 && c<127) {
-					if (x>=video_num_columns) {
+				if (c > 31 && c < 127)
+				{
+					if (x >= video_num_columns)
+					{
 						x -= video_num_columns;
 						pos -= video_size_row;
 						lf();

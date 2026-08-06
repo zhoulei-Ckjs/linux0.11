@@ -217,21 +217,22 @@ setup_paging:
 	movl %eax,%cr0		/* set paging (PG) bit */
 	ret			/* this also flushes prefetch-queue */
 
-.align 2				; 4 字节边界对齐
+.align 2				; 按 2^2 = 4 字节边界对齐
 .word 0					; 定义一个 16 位的 0 值（填充对齐）
-idt_descr:
-	.word 256*8-1		# idt contains 256 entries
-	.long _idt
-.align 2				; 4 字节边界对齐
+idt_descr:				; idt_descr: 是一个符号（label） ，表示这个数据结构在内存中的起始地址。
+	.word 256*8-1		; IDT 中最后一个字节的偏移地址。idt contains 256 entries
+	.long _idt			; IDT 的基地址。
+.align 2				; 按 2^2 = 4 字节边界对齐
 .word 0					; 定义一个 16 位的 0 值（填充对齐）
 gdt_descr:
-	.word 256*8-1		# gdt 大小
-	.long _gdt			# GDT 的起始地址
+	.word 256*8-1		; gdt 中最后一个字节的偏移地址。
+	.long _gdt			; GDT 的起始地址
 
-	.align 3
-_idt:	.fill 256,8,0		# idt is uninitialized
+.align 3				; 按 2^3 = 8 字节边界对齐
+_idt:	.fill 256,8,0	; 256 × 8 = 2048 字节的 IDT，所有描述符初始化为 0。
 
-_gdt:	.quad 0x0000000000000000	/* NULL descriptor */
+_gdt:	
+	.quad 0x0000000000000000		/* NULL descriptor */
 	.quad 0x00c09a0000000fff		/* 16Mb */
 	.quad 0x00c0920000000fff		/* 16Mb */
 	.quad 0x0000000000000000		/* TEMPORARY - don't use */

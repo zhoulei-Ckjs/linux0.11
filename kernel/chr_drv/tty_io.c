@@ -1,4 +1,3 @@
-
 /*
  * 'tty_io.c' 'tty_io.c' 使终端（TTY）设备呈现出一种正交（即统一、通用）的编程接口，
  * 无论它们是控制台（console）还是串口通道（如 RS-232 串行端口）。
@@ -336,9 +335,9 @@ int tty_write(unsigned channel, char * buf, int nr)		///< channel = 0
 			b++;
 			nr--;
 			cr_flag = 0;
-			PUTCH(c,tty->write_q);
+			PUTCH(c, tty->write_q);
 		}
-		tty->write(tty);
+		tty->write(tty);	///< 在 tty_table 中进行初始化的。
 		if (nr>0)
 			schedule();
 	}

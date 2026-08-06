@@ -31,10 +31,10 @@ struct tty_queue
 #define LEFT(a) (((a).tail-(a).head-1)&(TTY_BUF_SIZE-1))	/* 剩余多少空间，tail 为下次读取位置，head 为下次写入位置；为空时 tail == head，LEFT 结果为 0x3FF，即剩余最大空间；往里写入时就是 head 一直在增加，环形队列，超越最大位置后回环，后再 head-1 的位置达到最大，表示写满了。*/
 #define LAST(a) ((a).buf[(TTY_BUF_SIZE-1)&((a).head-1)])
 #define FULL(a) (!LEFT(a))									/* 剩余空间为 0 表示FULL。*/
-#define CHARS(a) (((a).head-(a).tail)&(TTY_BUF_SIZE-1))
-#define GETCH(queue,c) \
-(void)({c=(queue).buf[(queue).tail];INC((queue).tail);})
-#define PUTCH(c,queue) 										/* 往输出缓冲区中写入一个字符。*/ \
+#define CHARS(a) (((a).head-(a).tail)&(TTY_BUF_SIZE-1))		/* 计算环形队列中拥有多少字符。*/
+#define GETCH(queue,c) 										/* 从缓冲区中获取一个字符。*/ \
+(void)({c=(queue).buf[(queue).tail];INC((queue).tail);})	/* (void)( ... ) 强制丢弃返回值。({ ... }) —— GNU C 的 statement expression，允许在圆括号内写多个语句，最终表达式的值作为整个块的值。 */
+#define PUTCH(c,queue) 										/* 往缓冲区中写入一个字符。*/ \
 (void)({(queue).buf[(queue).head]=(c);INC((queue).head);})	/* (void)( ... ) 强制丢弃返回值。({ ... }) —— GNU C 的 statement expression，允许在圆括号内写多个语句，最终表达式的值作为整个块的值。*/
 
 #define INTR_CHAR(tty) ((tty)->termios.c_cc[VINTR])

@@ -1,16 +1,10 @@
 /*
- *  linux/kernel/serial.c
- *
- *  (C) 1991  Linus Torvalds
- */
-
-/*
  *	serial.c
  *
- * This module implements the rs232 io functions
+ * 本模块实现了 RS-232 串行通信的 I/O 函数
  *	void rs_write(struct tty_struct * queue);
  *	void rs_init(void);
- * and all interrupts pertaining to serial IO.
+ * 以及所有与串行 I/O 相关的中断处理例程。
  */
 
 #include <linux/tty.h>
@@ -20,7 +14,7 @@
 
 #define WAKEUP_CHARS (TTY_BUF_SIZE/4)
 
-extern void rs1_interrupt(void);
+extern void rs1_interrupt(void);	///< 串口（RS-232 / UART）设备的中断处理函数 ，专用于处理 串行通信接口的接收（RX）和发送（TX）中断。
 extern void rs2_interrupt(void);
 
 static void init(int port)
@@ -36,7 +30,7 @@ static void init(int port)
 
 void rs_init(void)
 {
-	set_intr_gate(0x24,rs1_interrupt);
+	set_intr_gate(0x24, rs1_interrupt);
 	set_intr_gate(0x23,rs2_interrupt);
 	init(tty_table[1].read_q.data);
 	init(tty_table[2].read_q.data);
