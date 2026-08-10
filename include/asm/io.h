@@ -1,25 +1,26 @@
 #define outb(value,port) \
 __asm__ ("outb %%al,%%dx"::"a" (value),"d" (port))
-/*
- * ´Ó port ¶Ë¿Ú¶ÁÈ¡ 1 ×Ö½Ú£¬·µ»Ø¶ÁÈ¡µ½µÄÖµ£¨1 ×Ö½Ú£©¡£ */
+
+/* ä» port ç«¯å£è¯»å– 1 å­—èŠ‚ï¼Œè¿”å›è¯»å–åˆ°çš„å€¼ï¼ˆ1 å­—èŠ‚ï¼‰ã€‚*/
 #define inb(port) ({ \
 unsigned char _v; \
 __asm__ volatile ("inb %%dx,%%al":"=a" (_v):"d" (port)); \
 _v; \
 })
 
-#define outb_p(value,port) \
+/* å‘ç«¯å£ port è¾“å‡º value æ•°æ®ã€‚*/
+#define outb_p(value, port) \
 __asm__ ("outb %%al,%%dx\n" \
 		"\tjmp 1f\n" \
 		"1:\tjmp 1f\n" \
 		"1:"::"a" (value),"d" (port))
 
-/* ´Ó port ¶Ë¿Ú¶ÁÈ¡ 1 ×Ö½Ú£¬·µ»Ø¶ÁÈ¡µ½µÄÖµ£¨1 ×Ö½Ú£©¡£ */
+/* ä» port ç«¯å£è¯»å– 1 å­—èŠ‚ï¼Œè¿”å›è¯»å–åˆ°çš„å€¼ï¼ˆ1 å­—èŠ‚ï¼‰ã€‚ */
 #define inb_p(port) ({ \
 unsigned char _v; \
-__asm__ volatile ("inb %%dx,%%al\n" /* ´Ó¶Ë¿Ú dx ¶ÁÈ¡ 1 ×Ö½Úµ½ al¡£ */ \
+__asm__ volatile ("inb %%dx,%%al\n" /* ä»ç«¯å£ dx è¯»å– 1 å­—èŠ‚åˆ° alã€‚ */ \
 	"\tjmp 1f\n" \
 	"1:\tjmp 1f\n" \
-	"1:":"=a" (_v):"d" (port));     /* _v = eax£¬edx = ¶Ë¿Ú¡£ */ \
+	"1:":"=a" (_v):"d" (port));     /* _v = eaxï¼Œedx = ç«¯å£ã€‚ */ \
 _v; \
 })

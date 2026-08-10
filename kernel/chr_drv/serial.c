@@ -15,26 +15,26 @@
 #define WAKEUP_CHARS (TTY_BUF_SIZE/4)
 
 extern void rs1_interrupt(void);	///< 串口（RS-232 / UART）设备的中断处理函数 ，专用于处理 串行通信接口的接收（RX）和发送（TX）中断。
-extern void rs2_interrupt(void);
+extern void rs2_interrupt(void);	///< 串口2 设备的中断处理函数 ，专用于处理 串行通信接口的接收（RX）和发送（TX）中断。
 
 static void init(int port)
 {
-	outb_p(0x80,port+3);	/* set DLAB of line control reg */
-	outb_p(0x30,port);	/* LS of divisor (48 -> 2400 bps */
-	outb_p(0x00,port+1);	/* MS of divisor */
-	outb_p(0x03,port+3);	/* reset DLAB */
-	outb_p(0x0b,port+4);	/* set DTR,RTS, OUT_2 */
-	outb_p(0x0d,port+1);	/* enable all intrs but writes */
-	(void)inb(port);	/* read data port to reset things (?) */
+	outb_p(0x80, port+3);	/* set DLAB of line control reg */
+	outb_p(0x30, port);		/* LS of divisor (48 -> 2400 bps */
+	outb_p(0x00, port+1);	/* MS of divisor */
+	outb_p(0x03, port+3);	/* reset DLAB */
+	outb_p(0x0b, port+4);	/* set DTR,RTS, OUT_2 */
+	outb_p(0x0d, port+1);	/* enable all intrs but writes */
+	(void)inb(port);		/* read data port to reset things (?) */
 }
 
 void rs_init(void)
 {
 	set_intr_gate(0x24, rs1_interrupt);
-	set_intr_gate(0x23,rs2_interrupt);
-	init(tty_table[1].read_q.data);
-	init(tty_table[2].read_q.data);
-	outb(inb_p(0x21)&0xE7,0x21);
+	set_intr_gate(0x23, rs2_interrupt);
+	init(tty_table[1].read_q.data);		///< 端口为 0x3f8
+	init(tty_table[2].read_q.data);		///< 端口为 0x2f8
+	outb(inb_p(0x21)&0xE7, 0x21);
 }
 
 /*
