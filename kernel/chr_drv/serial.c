@@ -27,18 +27,22 @@ static void init(int port)
 	outb_p(0x30, port);		/* 写分频系数低字节。设置波特率，2400 bps，设计到计算略。*/
 	outb_p(0x00, port+1);	/* 写入分频系数高字节（DLAB==1时为此功能）。MS of divisor */
 	outb_p(0x03, port+3);	/* 恢复DLAB设置。*/
-	outb_p(0x0b, port+4);	/* 设置调制解调控制寄存器。set DTR,RTS, OUT_2 */
+	outb_p(0x0b, port+4);	/* 设置调制解调控制寄存器。set DTR,RTS, OUT_2（连接 UART 到 PIC（COM2连接IRQ4，COM1连接IRQ3），使中断生效）*/
 	outb_p(0x0d, port+1);	/* enable all intrs but writes */
 	(void)inb(port);		/* 读取 RBR 清除可能的“幽灵中断”，确保初始化后状态干净。read data port to reset things (?) */
 }
 
+/**
+ * @brief 串口初始化。
+ * @details 1.设置串口1、2的中断处理函数；2.初始化串口硬件；3.开启COM1、COM2的中断。
+ */
 void rs_init(void)
 {
-	set_intr_gate(0x24, rs1_interrupt);
-	set_intr_gate(0x23, rs2_interrupt);
-	init(tty_table[1].read_q.data);		///< 端口为 0x3f8
-	init(tty_table[2].read_q.data);		///< 端口为 0x2f8
-	outb(inb_p(0x21)&0xE7, 0x21);
+	set_intr_gate(0x24, rs1_interrupt);	///< 串口1中断处理函数。
+	set_intr_gate(0x23, rs2_interrupt);	///< 串口2中断处理函数。
+	init(tty_table[1].read_q.data);		///< 硬件初始化，端口为 0x3f8。
+	init(tty_table[2].read_q.data);		///< 硬件初始化，端口为 0x2f8
+	outb(inb_p(0x21)&0xE7, 0x21);		///< 开启COM1、COM2的中断。
 }
 
 /*

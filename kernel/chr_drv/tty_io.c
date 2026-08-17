@@ -114,7 +114,7 @@ struct tty_queue * table_list[] =
 
 void tty_init(void)
 {
-	rs_init();
+	rs_init();		///< COM串口初始化。
 	con_init();
 }
 

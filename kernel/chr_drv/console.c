@@ -602,16 +602,6 @@ void con_write(struct tty_struct * tty)
 	set_cursor();
 }
 
-/*
- *  void con_init(void);
- *
- * This routine initalizes console interrupts, and does nothing
- * else. If you want the screen to clear, call tty_write with
- * the appropriate escape-sequece.
- *
- * Reads the information preserved by setup.s to determine the current display
- * type and sets everything accordingly.
- */
 void con_init(void)
 {
 	register unsigned char a;

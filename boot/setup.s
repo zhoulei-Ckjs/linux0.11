@@ -28,12 +28,12 @@ start:
 ; ok, the read went well so we get current cursor position and save it for
 ; posterity.
 
-    mov    ax,#INITSEG    ; this is done in bootsect already, but...
-    mov    ds,ax
-    mov    ah,#0x03    ; read cursor pos
-    xor    bh,bh
-    int    0x10        ; save it in known place, con_init fetches
-    mov    [0],dx        ; it from 0x90000.
+    mov    ax,#INITSEG      ; ax = 0x9000
+    mov    ds,ax            ; ds = 0x9000
+    mov    ah,#0x03         ; ax = 0x0300, ah = 0x03
+    xor    bh,bh            ; bh = 0x00
+    int    0x10             ; save it in known place, con_init fetches
+    mov    [0],dx           ; it from 0x90000.
 
 ; 获取扩展内存大小 (kB)
     mov    ah,#0x88    ; 获取扩展内存，1M 以后的可用内存大小。

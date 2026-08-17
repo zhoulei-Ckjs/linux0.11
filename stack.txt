@@ -1,7 +1,9 @@
-10/2597		111		23
+8/2607		112		23
 
-serial.c:35:39
-tty_io.c:115:117
+setup.s:31:35
+console.c:37
+console.c:605:611
+tty_io.c:115:118
 main.c:129
 console.c:439:453
 tty_io.c:304:341
