@@ -30,12 +30,12 @@
  * These are set up by the setup-routine at boot-time:
  */
 
-#define ORIG_X			(*(unsigned char *)0x90000)
-#define ORIG_Y			(*(unsigned char *)0x90001)
-#define ORIG_VIDEO_PAGE		(*(unsigned short *)0x90004)
-#define ORIG_VIDEO_MODE		((*(unsigned short *)0x90006) & 0xff)
-#define ORIG_VIDEO_COLS 	(((*(unsigned short *)0x90006) & 0xff00) >> 8)
-#define ORIG_VIDEO_LINES	(25)
+#define ORIG_X			(*(unsigned char *)0x90000)							/* 当前光标位置 x */
+#define ORIG_Y			(*(unsigned char *)0x90001)							/* 当前光标位置 y */
+#define ORIG_VIDEO_PAGE		(*(unsigned short *)0x90004)					/* 当前显示页号 */
+#define ORIG_VIDEO_MODE		((*(unsigned short *)0x90006) & 0xff)			/* 当前显示模式 */
+#define ORIG_VIDEO_COLS 	(((*(unsigned short *)0x90006) & 0xff00) >> 8)	/* 屏幕宽度，列数 */
+#define ORIG_VIDEO_LINES	(25)											/* 屏幕行数 */
 #define ORIG_VIDEO_EGA_AX	(*(unsigned short *)0x90008)
 #define ORIG_VIDEO_EGA_BX	(*(unsigned short *)0x9000a)
 #define ORIG_VIDEO_EGA_CX	(*(unsigned short *)0x9000c)
@@ -608,13 +608,13 @@ void con_init(void)
 	char *display_desc = "????";
 	char *display_ptr;
 
-	video_num_columns = ORIG_VIDEO_COLS;
-	video_size_row = video_num_columns * 2;
-	video_num_lines = ORIG_VIDEO_LINES;
-	video_page = ORIG_VIDEO_PAGE;
-	video_erase_char = 0x0720;
+	video_num_columns = ORIG_VIDEO_COLS;		///< 屏幕列数 
+	video_size_row = video_num_columns * 2;		///< 屏幕上每个字用两个字节表示，一个字节表示颜色底色等，另一个存储符号。
+	video_num_lines = ORIG_VIDEO_LINES;			///< 屏幕行数
+	video_page = ORIG_VIDEO_PAGE;				///< 当前显示页号
+	video_erase_char = 0x0720;					///< 这是一个空格的表示，用这个就能在屏幕上输出一个空格。
 	
-	if (ORIG_VIDEO_MODE == 7)			/* Is this a monochrome display? */
+	if (ORIG_VIDEO_MODE == 7)					/* MGA（Monochrome Graphics Adapter）单色图形模式 */
 	{
 		video_mem_start = 0xb0000;
 		video_port_reg = 0x3b4;

@@ -25,27 +25,24 @@ begbss:
 entry start
 start:
 
-; ok, the read went well so we get current cursor position and save it for
-; posterity.
-
+; 获取光标位置。
     mov    ax,#INITSEG      ; ax = 0x9000
     mov    ds,ax            ; ds = 0x9000
-    mov    ah,#0x03         ; ax = 0x0300, ah = 0x03
+    mov    ah,#0x03         ; ax = 0x0300, ah = 0x03，获取光标位置。
     xor    bh,bh            ; bh = 0x00
     int    0x10             ; save it in known place, con_init fetches
-    mov    [0],dx           ; it from 0x90000.
+    mov    [0],dx           ; 光标位置存储于 0x90000
 
 ; 获取扩展内存大小 (kB)
-    mov    ah,#0x88    ; 获取扩展内存，1M 以后的可用内存大小。
+    mov    ah,#0x88         ; 获取扩展内存，1M 以后的可用内存大小。
     int    0x15
-    mov    [2],ax        ; 扩展内存总大小（KB），放到 ds:2 内存上，即 0x90002 处。
+    mov    [2],ax           ; 扩展内存总大小（KB），放到 ds:2 内存上，即 0x90002 处。
 
-; Get video-card data:
-
-    mov    ah,#0x0f
+; 获取当前显示模式和屏幕宽度。
+    mov    ah, #0x0f
     int    0x10
-    mov    [4],bx        ; bh = display page
-    mov    [6],ax        ; al = video mode, ah = window width
+    mov    [4],bx           ; 当前显示页号，存储于 0x90004
+    mov    [6],ax           ; al = 显示模式, ah = 屏幕宽度（列数）。存储于 0x90006。
 
 ; check for EGA/VGA and some config parameters
 
