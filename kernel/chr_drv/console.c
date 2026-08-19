@@ -616,7 +616,7 @@ void con_init(void)
 	
 	if (ORIG_VIDEO_MODE == 7)					/* MGA（Monochrome Graphics Adapter）单色图形模式 */
 	{
-		video_mem_start = 0xb0000;
+		video_mem_start = 0xb0000;				///< 单色显示内存起始位置。
 		video_port_reg = 0x3b4;
 		video_port_val = 0x3b5;
 		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10)

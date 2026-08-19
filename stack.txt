@@ -1,7 +1,8 @@
-17/2615		113		23
+6/2632		114		23
 
-note:6
-console.c:605:619
+setup.s:47:51
+console.c:39
+console.c:605:622
 tty_io.c:115:118
 main.c:129
 console.c:439:453

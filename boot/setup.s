@@ -44,12 +44,11 @@ start:
     mov    [4],bx           ; 当前显示页号，存储于 0x90004
     mov    [6],ax           ; al = 显示模式, ah = 屏幕宽度（列数）。存储于 0x90006。
 
-; check for EGA/VGA and some config parameters
-
-    mov    ah,#0x12
-    mov    bl,#0x10
+; 获取 EGA/VGA 显示系统配置参数。
+    mov    ah,#0x12         ; 功能号。
+    mov    bl,#0x10         ; 子功能号。
     int    0x10
-    mov    [8],ax
+    mov    [8],ax           ; 存储于 0x90008。
     mov    [10],bx
     mov    [12],cx
 
