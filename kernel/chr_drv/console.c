@@ -1,34 +1,7 @@
-/*
- *	console.c
- *
- * This module implements the console io functions
- *	'void con_init(void)'
- *	'void con_write(struct tty_queue * queue)'
- * Hopefully this will be a rather complete VT102 implementation.
- *
- * Beeping thanks to John T Kohl.
- */
-
-/*
- *  NOTE!!! We sometimes disable and enable interrupts for a short while
- * (to put a word in video IO), but this will work even for keyboard
- * interrupts. We know interrupts aren't enabled when getting a keyboard
- * interrupt, as we use trap-gates. Hopefully all is well.
- */
-
-/*
- * Code to check for different video-cards mostly by Galen Hunt,
- * <g-hunt@ee.utah.edu>
- */
-
 #include <linux/sched.h>
 #include <linux/tty.h>
 #include <asm/io.h>
 #include <asm/system.h>
-
-/*
- * These are set up by the setup-routine at boot-time:
- */
 
 #define ORIG_X			(*(unsigned char *)0x90000)							/* 当前光标位置 x */
 #define ORIG_Y			(*(unsigned char *)0x90001)							/* 当前光标位置 y */
@@ -37,13 +10,13 @@
 #define ORIG_VIDEO_COLS 	(((*(unsigned short *)0x90006) & 0xff00) >> 8)	/* 屏幕宽度，列数 */
 #define ORIG_VIDEO_LINES	(25)											/* 屏幕行数 */
 #define ORIG_VIDEO_EGA_AX	(*(unsigned short *)0x90008)
-#define ORIG_VIDEO_EGA_BX	(*(unsigned short *)0x9000a)
+#define ORIG_VIDEO_EGA_BX	(*(unsigned short *)0x9000a)					/* BH = 当前视频模式；BL = 视频适配器类型。*/
 #define ORIG_VIDEO_EGA_CX	(*(unsigned short *)0x9000c)
 
-#define VIDEO_TYPE_MDA		0x10	/* Monochrome Text Display	*/
-#define VIDEO_TYPE_CGA		0x11	/* CGA Display 			*/
-#define VIDEO_TYPE_EGAM		0x20	/* EGA/VGA in Monochrome Mode	*/
-#define VIDEO_TYPE_EGAC		0x21	/* EGA/VGA in Color Mode	*/
+#define VIDEO_TYPE_MDA		0x10	/* Monochrome 文本显示模式	*/
+#define VIDEO_TYPE_CGA		0x11	/* CGA 显示模式 			*/
+#define VIDEO_TYPE_EGAM		0x20	/* EGA/VGA in Monochrome 模式 */
+#define VIDEO_TYPE_EGAC		0x21	/* EGA/VGA 彩色显示	*/
 
 #define NPAR 16
 
@@ -614,33 +587,34 @@ void con_init(void)
 	video_page = ORIG_VIDEO_PAGE;				///< 当前显示页号
 	video_erase_char = 0x0720;					///< 这是一个空格的表示，用这个就能在屏幕上输出一个空格。
 	
-	if (ORIG_VIDEO_MODE == 7)					/* MGA（Monochrome Graphics Adapter）单色图形模式 */
+    /// 这里是进行显示器判断并初始化。
+	if (ORIG_VIDEO_MODE == 7)					/* 80×25 黑白文本模式（80x25 monochrome text mode）*/
 	{
 		video_mem_start = 0xb0000;				///< 单色显示内存起始位置。
-		video_port_reg = 0x3b4;
-		video_port_val = 0x3b5;
-		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10)
+		video_port_reg = 0x3b4;					///< 视频控制器的 IO 端口。CRT Controller Index Register。告诉 CRT 控制器，我要访问哪个寄存器。
+		video_port_val = 0x3b5;					///< 视频控制器的 IO 端口。CRT Controller Data Register。读/写那个寄存器的数据。
+		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10)	///< EGA
 		{
 			video_type = VIDEO_TYPE_EGAM;
 			video_mem_end = 0xb8000;
 			display_desc = "EGAm";
 		}
-		else
+		else	///< 老的 MDA/CGA
 		{
 			video_type = VIDEO_TYPE_MDA;
 			video_mem_end	= 0xb2000;
 			display_desc = "*MDA";
 		}
 	}
-	else								/* If not, it is color. */
+	else                                        ///< 彩色文本模式，经典 VGA 文本。
 	{
-		video_mem_start = 0xb8000;
-		video_port_reg	= 0x3d4;
-		video_port_val	= 0x3d5;
+		video_mem_start = 0xb8000;              ///< 彩色文本显存起始地址。
+		video_port_reg	= 0x3d4;                ///< 视频控制器的 IO 端口。CRT Controller Index Register。告诉 CRT 控制器，我要访问哪个寄存器。
+		video_port_val	= 0x3d5;                ///< 视频控制器的 IO 端口。CRT Controller Data Register。读/写那个寄存器的数据。
 		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10)
 		{
-			video_type = VIDEO_TYPE_EGAC;
-			video_mem_end = 0xbc000;
+			video_type = VIDEO_TYPE_EGAC;       ///< EGA 彩色显示。
+			video_mem_end = 0xbc000;            ///< 显存结束位置。
 			display_desc = "EGAc";
 		}
 		else
